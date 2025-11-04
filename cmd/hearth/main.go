@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"time"
 
@@ -52,9 +53,16 @@ Description: %s
 
 Please complete this task. When done, respond with a summary of what you did.`, task.Title, task.Description)
 
+		// Create temp workspace for Claude
+		tempDir, err := os.MkdirTemp("", fmt.Sprintf("hearth-task-%s-*", task.ID))
+		if err != nil {
+			log.Fatalf("Failed to create temp directory: %v", err)
+		}
+		fmt.Printf("📁 Workspace: %s\n", tempDir)
+
 		// Call Claude
 		fmt.Println("🤖 Calling Claude...")
-		response, err := callClaude(prompt)
+		response, err := callClaude(prompt, tempDir)
 		if err != nil {
 			log.Fatalf("Failed to call Claude: %v", err)
 		}
@@ -80,9 +88,16 @@ Please complete this task. When done, respond with a summary of what you did.`, 
 	fmt.Println("🎉 Hearth finished!")
 }
 
-// callClaude invokes the claude CLI and returns the response
-func callClaude(prompt string) (string, error) {
-	cmd := exec.Command("claude", prompt)
+// callClaude invokes the claude CLI in a temporary workspace and returns the response
+func callClaude(prompt, workDir string) (string, error) {
+	cmd := exec.Command("claude",
+		"--print",                        // Non-interactive output
+		"--dangerously-skip-permissions", // Skip permission prompts (safe: sandboxed to workDir)
+		prompt,
+	)
+
+	// Set Claude's working directory to the temp workspace
+	cmd.Dir = workDir
 
 	// Capture output
 	output, err := cmd.CombinedOutput()
