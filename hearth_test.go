@@ -15,38 +15,38 @@ func TestHearthJourney(t *testing.T) {
 	h := NewHearth("test-project")
 	assert.NotNil(t, h)
 
-	// // Step 2: Add tasks by processing TaskCreated events
-	// err := h.Process(TaskCreated{
-	// 	TaskID:      "T1",
-	// 	Title:       "Implement login endpoint",
-	// 	Description: "Create POST /login that accepts email/password",
-	// 	Time:        time.Now(),
-	// })
-	// assert.NoError(t, err)
-	//
-	// err = h.Process(TaskCreated{
-	// 	TaskID:      "T2",
-	// 	Title:       "Add login tests",
-	// 	Description: "Write tests for login endpoint",
-	// 	DependsOn:   strPtr("T1"), // T2 depends on T1
-	// 	Time:        time.Now(),
-	// })
-	// assert.NoError(t, err)
-	//
-	// err = h.Process(TaskCreated{
-	// 	TaskID:      "T3",
-	// 	Title:       "Write documentation",
-	// 	Description: "Document the login API",
-	// 	Time:        time.Now(),
-	// })
-	// assert.NoError(t, err)
-	//
-	// // Step 3: Query state
-	// tasks := h.GetTasks()
-	// assert.Equal(t, 3, len(tasks))
-	// assert.Equal(t, "todo", tasks["T1"].Status)
-	// assert.Equal(t, "todo", tasks["T2"].Status)
-	// assert.Equal(t, "todo", tasks["T3"].Status)
+	// Step 2: Add tasks by processing TaskCreated events
+	err := h.Process(TaskCreated{
+		TaskID:      "T1",
+		Title:       "Implement login endpoint",
+		Description: "Create POST /login that accepts email/password",
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	err = h.Process(TaskCreated{
+		TaskID:      "T2",
+		Title:       "Add login tests",
+		Description: "Write tests for login endpoint",
+		DependsOn:   strPtr("T1"), // T2 depends on T1
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	err = h.Process(TaskCreated{
+		TaskID:      "T3",
+		Title:       "Write documentation",
+		Description: "Document the login API",
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Step 3: Query state
+	tasks := h.GetTasks()
+	assert.Equal(t, 3, len(tasks))
+	assert.Equal(t, "todo", tasks["T1"].Status)
+	assert.Equal(t, "todo", tasks["T2"].Status)
+	assert.Equal(t, "todo", tasks["T3"].Status)
 	//
 	// // Step 4: Get next task (should be T1, since T2 depends on it)
 	// next := h.GetNextTask()
