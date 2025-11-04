@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cumulusrpg/atmos"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -236,67 +235,3 @@ type IterationCompleted struct {
 func (e IterationCompleted) Type() string         { return "iteration_completed" }
 func (e IterationCompleted) Timestamp() time.Time { return e.Time }
 
-// Hearth interface (will implement later)
-type Hearth struct {
-	engine *atmos.Engine
-}
-
-func NewHearth(projectID string) *Hearth {
-	return &Hearth{}
-}
-
-func (h *Hearth) Process(event atmos.Event) error {
-	return nil
-}
-
-func (h *Hearth) GetTask(id string) *Task {
-	return nil
-}
-
-func (h *Hearth) GetNextTask() *Task {
-	return nil
-}
-
-func (h *Hearth) GetTasks() map[string]*Task {
-	return nil
-}
-
-func (h *Hearth) GetLogs(taskID string) []TaskLog {
-	return nil
-}
-
-func (h *Hearth) GetEvents() []atmos.Event {
-	return nil
-}
-
-func (h *Hearth) SetEvents(events []atmos.Event) error {
-	return nil
-}
-
-func (h *Hearth) GetIterations() []Iteration {
-	return nil
-}
-
-// State types (will define properly later)
-type Task struct {
-	ID          string
-	Title       string
-	Description string
-	DependsOn   *string
-	Status      string
-	Logs        []TaskLog
-	CreatedAt   time.Time
-	CompletedAt *time.Time
-}
-
-type TaskLog struct {
-	Message   string
-	CreatedAt time.Time
-}
-
-type Iteration struct {
-	ID      int
-	TaskID  string
-	Prompt  string
-	Success bool
-}
