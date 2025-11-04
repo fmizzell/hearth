@@ -18,3 +18,17 @@ func reduceTaskCreated(engine *atmos.Engine, state interface{}, event atmos.Even
 
 	return s
 }
+
+// reduceTaskCompleted handles TaskCompleted events
+func reduceTaskCompleted(engine *atmos.Engine, state interface{}, event atmos.Event) interface{} {
+	s := state.(HearthState)
+	e := event.(TaskCompleted)
+
+	if task, exists := s.Tasks[e.TaskID]; exists {
+		task.Status = "completed"
+		completedAt := e.Time
+		task.CompletedAt = &completedAt
+	}
+
+	return s
+}

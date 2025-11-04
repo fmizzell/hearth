@@ -7,15 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestHearthJourney is an end-to-end test showing how Hearth should work.
-// Hearth has ONE method: Process(event) - everything else is queries.
-// We'll comment out most of it and gradually uncomment as we implement each piece.
+// TestHearthJourney shows the MINIMAL loop needed to work with Claude.
+// We'll add features (logs, dependencies, etc) only when we actually need them.
 func TestHearthJourney(t *testing.T) {
-	// Step 1: Create a new Hearth engine
+	// Step 1: Create hearth
 	h := NewHearth("test-project")
 	assert.NotNil(t, h)
 
-	// Step 2: Add tasks by processing TaskCreated events
+	// Step 2: Add a single task
 	err := h.Process(TaskCreated{
 		TaskID:      "T1",
 		Title:       "Implement login endpoint",
@@ -24,29 +23,27 @@ func TestHearthJourney(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = h.Process(TaskCreated{
-		TaskID:      "T2",
-		Title:       "Add login tests",
-		Description: "Write tests for login endpoint",
-		DependsOn:   strPtr("T1"), // T2 depends on T1
-		Time:        time.Now(),
+	// Step 3: Get next task (should return T1)
+	task := h.GetNextTask()
+	assert.NotNil(t, task)
+	assert.Equal(t, "T1", task.ID)
+	assert.Equal(t, "todo", task.Status)
+
+	// Step 4: Complete the task
+	err = h.Process(TaskCompleted{
+		TaskID: "T1",
+		Time:   time.Now(),
 	})
 	assert.NoError(t, err)
 
-	err = h.Process(TaskCreated{
-		TaskID:      "T3",
-		Title:       "Write documentation",
-		Description: "Document the login API",
-		Time:        time.Now(),
-	})
-	assert.NoError(t, err)
+	// Step 5: Task should be completed
+	task = h.GetTask("T1")
+	assert.Equal(t, "completed", task.Status)
+	assert.NotNil(t, task.CompletedAt)
 
-	// Step 3: Query state
-	tasks := h.GetTasks()
-	assert.Equal(t, 3, len(tasks))
-	assert.Equal(t, "todo", tasks["T1"].Status)
-	assert.Equal(t, "todo", tasks["T2"].Status)
-	assert.Equal(t, "todo", tasks["T3"].Status)
+	// Step 6: No more tasks
+	next := h.GetNextTask()
+	assert.Nil(t, next)
 	//
 	// // Step 4: Get next task (should be T1, since T2 depends on it)
 	// next := h.GetNextTask()

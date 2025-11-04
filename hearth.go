@@ -44,6 +44,9 @@ func NewHearth(projectID string) *Hearth {
 	engine.When("task_created", func() atmos.Event { return &TaskCreated{} }).
 		Updates("hearth", reduceTaskCreated)
 
+	engine.When("task_completed", func() atmos.Event { return &TaskCompleted{} }).
+		Updates("hearth", reduceTaskCompleted)
+
 	return &Hearth{
 		projectID: projectID,
 		engine:    engine,
@@ -63,4 +66,24 @@ func (h *Hearth) Process(event atmos.Event) error {
 func (h *Hearth) GetTasks() map[string]*Task {
 	state := h.engine.GetState("hearth").(HearthState)
 	return state.Tasks
+}
+
+// GetTask returns a specific task by ID
+func (h *Hearth) GetTask(id string) *Task {
+	state := h.engine.GetState("hearth").(HearthState)
+	return state.Tasks[id]
+}
+
+// GetNextTask returns the next task to work on (first todo task)
+func (h *Hearth) GetNextTask() *Task {
+	state := h.engine.GetState("hearth").(HearthState)
+
+	// Find first task with status "todo"
+	for _, task := range state.Tasks {
+		if task.Status == "todo" {
+			return task
+		}
+	}
+
+	return nil
 }
