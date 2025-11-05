@@ -14,7 +14,7 @@ func TestHearthJourney(t *testing.T) {
 	h := NewHearth("test-project")
 	assert.NotNil(t, h)
 
-	// Step 2: Add a single task
+	// Step 2: Add tasks with dependencies
 	err := h.Process(TaskCreated{
 		TaskID:      "T1",
 		Title:       "Implement login endpoint",
@@ -23,26 +23,60 @@ func TestHearthJourney(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Step 3: Get next task (should return T1)
+	err = h.Process(TaskCreated{
+		TaskID:      "T2",
+		Title:       "Add login tests",
+		Description: "Write tests for login endpoint",
+		DependsOn:   strPtr("T1"), // T2 depends on T1
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	err = h.Process(TaskCreated{
+		TaskID:      "T3",
+		Title:       "Write documentation",
+		Description: "Document the login API",
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Step 3: Get next task (should be T1, since T2 depends on it, T3 is independent)
 	task := h.GetNextTask()
 	assert.NotNil(t, task)
 	assert.Equal(t, "T1", task.ID)
 	assert.Equal(t, "todo", task.Status)
 
-	// Step 4: Complete the task
+	// Step 4: Complete T1
 	err = h.Process(TaskCompleted{
 		TaskID: "T1",
 		Time:   time.Now(),
 	})
 	assert.NoError(t, err)
 
-	// Step 5: Task should be completed
 	task = h.GetTask("T1")
 	assert.Equal(t, "completed", task.Status)
 	assert.NotNil(t, task.CompletedAt)
 
-	// Step 6: No more tasks
+	// Step 5: Now T2 should be available (its dependency is done)
 	next := h.GetNextTask()
+	assert.NotNil(t, next)
+	assert.Equal(t, "T2", next.ID)
+
+	// Step 6: Complete T2
+	err = h.Process(TaskCompleted{TaskID: "T2", Time: time.Now()})
+	assert.NoError(t, err)
+
+	// Step 7: T3 has no dependencies, should be available
+	next = h.GetNextTask()
+	assert.NotNil(t, next)
+	assert.Equal(t, "T3", next.ID)
+
+	// Step 8: Complete T3
+	err = h.Process(TaskCompleted{TaskID: "T3", Time: time.Now()})
+	assert.NoError(t, err)
+
+	// Step 9: No more tasks
+	next = h.GetNextTask()
 	assert.Nil(t, next)
 	//
 	// // Step 4: Get next task (should be T1, since T2 depends on it)
