@@ -5,28 +5,48 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/fmizzell/hearth"
+	"github.com/fmizzell/hearth/prompts"
 )
 
 func main() {
-	// Create hearth instance
-	h := hearth.NewHearth("test-project")
+	// Get target directory from command line
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: hearth <target-directory>")
+	}
+	targetDir := os.Args[1]
 
-	// Add a simple task
-	err := h.Process(hearth.TaskCreated{
+	// Verify target directory exists
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+		log.Fatalf("Target directory does not exist: %s", targetDir)
+	}
+
+	// Make target directory absolute
+	absTargetDir, err := filepath.Abs(targetDir)
+	if err != nil {
+		log.Fatalf("Failed to get absolute path: %v", err)
+	}
+
+	fmt.Println("🔥 Hearth - Code Quality Analysis")
+	fmt.Printf("📂 Target: %s\n", absTargetDir)
+	fmt.Println()
+
+	// Create hearth instance
+	h := hearth.NewHearth("code-quality")
+
+	// Add code quality analysis task
+	err = h.Process(hearth.TaskCreated{
 		TaskID:      "T1",
-		Title:       "Write a hello world function",
-		Description: "Create a simple Go function that returns 'Hello, World!'",
+		Title:       "Analyze codebase for quality issues",
+		Description: fmt.Sprintf("Perform comprehensive code quality analysis on: %s", absTargetDir),
 		Time:        time.Now(),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create task: %v", err)
 	}
-
-	fmt.Println("🔥 Hearth started!")
-	fmt.Println()
 
 	// Main loop
 	iteration := 0
@@ -45,24 +65,19 @@ func main() {
 		fmt.Printf("   Description: %s\n", task.Description)
 		fmt.Println()
 
-		// Build prompt for Claude
-		prompt := fmt.Sprintf(`You are working on a task:
-
-Title: %s
-Description: %s
-
-Please complete this task. When done, respond with a summary of what you did.`, task.Title, task.Description)
-
-		// Create temp workspace for Claude
-		tempDir, err := os.MkdirTemp("", fmt.Sprintf("hearth-task-%s-*", task.ID))
-		if err != nil {
-			log.Fatalf("Failed to create temp directory: %v", err)
+		// Create output directory for code quality reports
+		codeQualityDir := filepath.Join(absTargetDir, "code-quality")
+		if err := os.MkdirAll(codeQualityDir, 0755); err != nil {
+			log.Fatalf("Failed to create code-quality directory: %v", err)
 		}
-		fmt.Printf("📁 Workspace: %s\n", tempDir)
+		fmt.Printf("📊 Output: %s\n", codeQualityDir)
 
-		// Call Claude
-		fmt.Println("🤖 Calling Claude...")
-		response, err := callClaude(prompt, tempDir)
+		// Use prompt from prompts package
+		prompt := prompts.CodeQualityAnalysis
+
+		// Call Claude (working directly in target directory)
+		fmt.Println("🤖 Starting analysis...")
+		response, err := callClaude(prompt, absTargetDir)
 		if err != nil {
 			log.Fatalf("Failed to call Claude: %v", err)
 		}

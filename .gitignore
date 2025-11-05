@@ -1,1 +1,4 @@
 bin/
+code-quality/
+coverage.out
+*.test
