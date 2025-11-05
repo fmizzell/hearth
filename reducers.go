@@ -9,7 +9,7 @@ import (
 // reduceTaskCreated handles TaskCreated events
 func reduceTaskCreated(engine *atmos.Engine, state interface{}, event atmos.Event) interface{} {
 	s := state.(HearthState)
-	e := event.(TaskCreated)
+	e := event.(*TaskCreated)
 
 	s.Tasks[e.TaskID] = &Task{
 		ID:          e.TaskID,
@@ -27,7 +27,7 @@ func reduceTaskCreated(engine *atmos.Engine, state interface{}, event atmos.Even
 // reduceTaskCompleted handles TaskCompleted events
 func reduceTaskCompleted(engine *atmos.Engine, state interface{}, event atmos.Event) interface{} {
 	s := state.(HearthState)
-	e := event.(TaskCompleted)
+	e := event.(*TaskCompleted)
 
 	if task, exists := s.Tasks[e.TaskID]; exists {
 		task.Status = "completed"

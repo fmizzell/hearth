@@ -12,8 +12,7 @@ var ErrEventRejected = errors.New("event was rejected by validators")
 
 // Hearth is the main engine wrapper
 type Hearth struct {
-	projectID string
-	engine    *atmos.Engine
+	engine *atmos.Engine
 }
 
 // HearthState holds all tasks
@@ -33,9 +32,9 @@ type Task struct {
 	CompletedAt *time.Time
 }
 
-// NewHearth creates a new Hearth instance
-func NewHearth(projectID string) *Hearth {
-	engine := atmos.NewEngine()
+// NewHearth creates a new Hearth instance with optional atmos options
+func NewHearth(opts ...atmos.EngineOption) *Hearth {
+	engine := atmos.NewEngine(opts...)
 
 	// Register initial state
 	engine.RegisterState("hearth", HearthState{
@@ -50,8 +49,7 @@ func NewHearth(projectID string) *Hearth {
 		Updates("hearth", reduceTaskCompleted)
 
 	return &Hearth{
-		projectID: projectID,
-		engine:    engine,
+		engine: engine,
 	}
 }
 

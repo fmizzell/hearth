@@ -34,18 +34,23 @@ func main() {
 	fmt.Printf("📂 Target: %s\n", absTargetDir)
 	fmt.Println()
 
-	// Create hearth instance
-	h := hearth.NewHearth("code-quality")
-
-	// Add code quality analysis task
-	err = h.Process(hearth.TaskCreated{
-		TaskID:      "T1",
-		Title:       "Analyze codebase for quality issues",
-		Description: fmt.Sprintf("Perform comprehensive code quality analysis on: %s", absTargetDir),
-		Time:        time.Now(),
-	})
+	// Create hearth instance with persistence
+	h, err := hearth.NewHearthWithPersistence(absTargetDir)
 	if err != nil {
-		log.Fatalf("Failed to create task: %v", err)
+		log.Fatalf("Failed to create hearth: %v", err)
+	}
+
+	// Add code quality analysis task (only if not already exists)
+	if h.GetTask("T1") == nil {
+		err = h.Process(&hearth.TaskCreated{
+			TaskID:      "T1",
+			Title:       "Analyze codebase for quality issues",
+			Description: fmt.Sprintf("Perform comprehensive code quality analysis on: %s", absTargetDir),
+			Time:        time.Now(),
+		})
+		if err != nil {
+			log.Fatalf("Failed to create task: %v", err)
+		}
 	}
 
 	// Main loop
@@ -88,7 +93,7 @@ func main() {
 		fmt.Println()
 
 		// Mark task completed
-		err = h.Process(hearth.TaskCompleted{
+		err = h.Process(&hearth.TaskCompleted{
 			TaskID: task.ID,
 			Time:   time.Now(),
 		})
@@ -98,6 +103,20 @@ func main() {
 
 		fmt.Printf("✓ Task %s completed\n", task.ID)
 		fmt.Println()
+
+		// Save events after each task completion
+		eventsFile := filepath.Join(absTargetDir, ".hearth", "events.json")
+		err = h.SaveToFile(eventsFile)
+		if err != nil {
+			log.Fatalf("Failed to save events: %v", err)
+		}
+	}
+
+	// Final save
+	eventsFile := filepath.Join(absTargetDir, ".hearth", "events.json")
+	err = h.SaveToFile(eventsFile)
+	if err != nil {
+		log.Fatalf("Failed to save events: %v", err)
 	}
 
 	fmt.Println("🎉 Hearth finished!")

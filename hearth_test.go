@@ -11,11 +11,11 @@ import (
 // We'll add features (logs, dependencies, etc) only when we actually need them.
 func TestHearthJourney(t *testing.T) {
 	// Step 1: Create hearth
-	h := NewHearth("test-project")
+	h := NewHearth()
 	assert.NotNil(t, h)
 
 	// Step 2: Add tasks with dependencies
-	err := h.Process(TaskCreated{
+	err := h.Process(&TaskCreated{
 		TaskID:      "T1",
 		Title:       "Implement login endpoint",
 		Description: "Create POST /login that accepts email/password",
@@ -23,7 +23,7 @@ func TestHearthJourney(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = h.Process(TaskCreated{
+	err = h.Process(&TaskCreated{
 		TaskID:      "T2",
 		Title:       "Add login tests",
 		Description: "Write tests for login endpoint",
@@ -32,7 +32,7 @@ func TestHearthJourney(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = h.Process(TaskCreated{
+	err = h.Process(&TaskCreated{
 		TaskID:      "T3",
 		Title:       "Write documentation",
 		Description: "Document the login API",
@@ -47,7 +47,7 @@ func TestHearthJourney(t *testing.T) {
 	assert.Equal(t, "todo", task.Status)
 
 	// Step 4: Complete T1
-	err = h.Process(TaskCompleted{
+	err = h.Process(&TaskCompleted{
 		TaskID: "T1",
 		Time:   time.Now(),
 	})
@@ -63,7 +63,7 @@ func TestHearthJourney(t *testing.T) {
 	assert.Equal(t, "T2", next.ID)
 
 	// Step 6: Complete T2
-	err = h.Process(TaskCompleted{TaskID: "T2", Time: time.Now()})
+	err = h.Process(&TaskCompleted{TaskID: "T2", Time: time.Now()})
 	assert.NoError(t, err)
 
 	// Step 7: T3 has no dependencies, should be available
@@ -72,7 +72,7 @@ func TestHearthJourney(t *testing.T) {
 	assert.Equal(t, "T3", next.ID)
 
 	// Step 8: Complete T3
-	err = h.Process(TaskCompleted{TaskID: "T3", Time: time.Now()})
+	err = h.Process(&TaskCompleted{TaskID: "T3", Time: time.Now()})
 	assert.NoError(t, err)
 
 	// Step 9: No more tasks
@@ -81,7 +81,7 @@ func TestHearthJourney(t *testing.T) {
 
 	// Step 10: Test hierarchical tasks (parent/child relationships)
 	// Create root EPIC task
-	err = h.Process(TaskCreated{
+	err = h.Process(&TaskCreated{
 		TaskID:      "T4",
 		Title:       "Improve code quality",
 		Description: "Root epic for code improvements",
@@ -90,7 +90,7 @@ func TestHearthJourney(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create child: Analysis (child of T4)
-	err = h.Process(TaskCreated{
+	err = h.Process(&TaskCreated{
 		TaskID:      "T5",
 		Title:       "Analyze codebase",
 		Description: "Run analysis tools and identify issues",
@@ -100,7 +100,7 @@ func TestHearthJourney(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create child: Apply fixes (child of T4, depends on T5)
-	err = h.Process(TaskCreated{
+	err = h.Process(&TaskCreated{
 		TaskID:      "T6",
 		Title:       "Apply priority fixes",
 		Description: "Fix high priority issues",
@@ -111,7 +111,7 @@ func TestHearthJourney(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create nested children (children of T6 - parallel fix tasks)
-	err = h.Process(TaskCreated{
+	err = h.Process(&TaskCreated{
 		TaskID:      "T7",
 		Title:       "Fix type assertions",
 		Description: "Add safety checks",
@@ -120,7 +120,7 @@ func TestHearthJourney(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = h.Process(TaskCreated{
+	err = h.Process(&TaskCreated{
 		TaskID:      "T8",
 		Title:       "Fix task ordering",
 		Description: "Add deterministic ordering",
@@ -151,21 +151,21 @@ func TestHearthJourney(t *testing.T) {
 	assert.Equal(t, "T5", next.ID)
 
 	// Complete T5
-	h.Process(TaskCompleted{TaskID: "T5", Time: time.Now()})
+	h.Process(&TaskCompleted{TaskID: "T5", Time: time.Now()})
 
 	// Now T7 and T8 are available (T6 is skipped because it has children)
 	next = h.GetNextTask()
 	assert.Equal(t, "T7", next.ID) // First by sort order
 
 	// Complete T7
-	h.Process(TaskCompleted{TaskID: "T7", Time: time.Now()})
+	h.Process(&TaskCompleted{TaskID: "T7", Time: time.Now()})
 
 	// T8 is next
 	next = h.GetNextTask()
 	assert.Equal(t, "T8", next.ID)
 
 	// Complete T8
-	h.Process(TaskCompleted{TaskID: "T8", Time: time.Now()})
+	h.Process(&TaskCompleted{TaskID: "T8", Time: time.Now()})
 
 	// T6 should auto-complete (all children done)
 	task = h.GetTask("T6")
