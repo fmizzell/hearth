@@ -45,7 +45,11 @@ func NewHearth(opts ...atmos.EngineOption) *Hearth {
 	engine.When("task_created", func() atmos.Event { return &TaskCreated{} }).
 		Updates("hearth", reduceTaskCreated)
 
+	engine.When("task_started", func() atmos.Event { return &TaskStarted{} }).
+		Updates("hearth", reduceTaskStarted)
+
 	engine.When("task_completed", func() atmos.Event { return &TaskCompleted{} }).
+		Requires(atmos.Valid(&TaskCompletionValidator{})).
 		Updates("hearth", reduceTaskCompleted)
 
 	return &Hearth{

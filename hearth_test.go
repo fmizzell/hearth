@@ -303,6 +303,52 @@ func TestHearthJourney(t *testing.T) {
 	// assert.True(t, iterations[0].Success)
 }
 
+// TestTaskShouldNotCompleteIfItHasChildren tests that a task should not be manually completed
+// if it has children - it should only auto-complete when all children are done
+func TestTaskShouldNotCompleteIfItHasChildren(t *testing.T) {
+	h := NewHearth()
+
+	// Create a task
+	err := h.Process(&TaskCreated{
+		TaskID:      "PARENT",
+		Title:       "Main task",
+		Description: "Do the work",
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Simulate what happens in run loop: task creates children during execution
+	err = h.Process(&TaskCreated{
+		TaskID:   "CHILD1",
+		Title:    "Subtask 1",
+		ParentID: strPtr("PARENT"),
+		Time:     time.Now(),
+	})
+	assert.NoError(t, err)
+
+	err = h.Process(&TaskCreated{
+		TaskID:   "CHILD2",
+		Title:    "Subtask 2",
+		ParentID: strPtr("PARENT"),
+		Time:     time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Now try to complete the parent - the validator should reject this
+	err = h.Process(&TaskCompleted{
+		TaskID: "PARENT",
+		Time:   time.Now(),
+	})
+
+	// The event should be rejected by the validator
+	assert.Error(t, err, "Should not be able to complete parent with incomplete children")
+	assert.Equal(t, ErrEventRejected, err)
+
+	// Parent should still be todo
+	parent := h.GetTask("PARENT")
+	assert.Equal(t, "todo", parent.Status, "Parent should remain todo when it has incomplete children")
+}
+
 // Helper function
 func strPtr(s string) *string {
 	return &s

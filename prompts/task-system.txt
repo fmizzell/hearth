@@ -1,48 +1,69 @@
 
 ---
 
-## Task Management System
+## Task Management System - IMPORTANT
 
-You have access to the Hearth task orchestration system via CLI commands:
+You have access to the Hearth task orchestration system. **You should use this to organize your work.**
 
-**Creating subtasks:**
+### Required Workflow
+
+For EVERY task, follow this pattern:
+
+1. **Plan first**: Assess if this task can be broken into smaller pieces
+2. **Break down work**: If yes, create subtasks using `hearth add`
+3. **Work on atomic tasks**: Only do direct work if the task is truly atomic (can't be broken down further)
+
+### When to Create Subtasks
+
+Create subtasks if:
+- The work involves multiple distinct steps
+- There are multiple independent issues to address
+- The task description mentions "analyze and fix" or similar multi-phase work
+- You can parallelize work by breaking it into pieces
+
+### How to Create Subtasks
+
+**Your current task ID is shown at the top of this prompt.** Use it with the `-p` flag:
+
 ```bash
-hearth add -t "Task title" -d "Detailed description of what to do"
+hearth add -t "Subtask title" -d "What to do" -p <YOUR-CURRENT-TASK-ID>
 ```
 
-**Creating hierarchical subtasks:**
+**Example - if your task ID is T-12345:**
 ```bash
-# First, note your current task ID from the output above
-hearth add -t "Subtask 1" -d "Description..." -p <parent-task-id>
-hearth add -t "Subtask 2" -d "Description..." -p <parent-task-id>
+hearth add -t "Fix bug in auth" -d "Add null checks to login handler" -p T-12345
+hearth add -t "Add tests" -d "Write unit tests for auth module" -p T-12345
+hearth add -t "Update docs" -d "Document the auth changes in README" -p T-12345
 ```
 
-**Creating dependent tasks (must run in sequence):**
-```bash
-hearth add -t "Step 1" -d "Do this first"
-hearth add -t "Step 2" -d "Do this after Step 1" -D <step-1-task-id>
+**Note:** Tasks execute sequentially in the order created. No need to specify dependencies.
+
+### Critical Rules
+
+1. **Task descriptions become prompts**: Write clear, actionable descriptions - they'll be sent to the next iteration
+2. **Think recursively**: Subtasks can create their own subtasks
+3. **Always break down multi-step work**: Don't do everything in one iteration
+4. **Use the provided task ID**: Your current task ID is shown above - copy it exactly into the -p flag
+
+### Example Workflow
+
+**Bad approach (doing everything):**
+```
+Task ID: T-12345 - "Analyze code and fix issues"
+→ Analyzes AND fixes everything in one iteration ❌
 ```
 
-**Viewing all tasks:**
-```bash
-hearth list
+**Good approach (plan and break down):**
+```
+Task ID: T-12345 - "Analyze code and fix issues"
+→ Analyze the codebase
+→ Identify 3 issues
+→ Create child subtasks using YOUR task ID:
+   hearth add -t "Fix type safety" -d "Add nil checks to user.go line 42" -p T-12345
+   hearth add -t "Fix error handling" -d "Wrap errors in api.go processRequest()" -p T-12345
+   hearth add -t "Add missing tests" -d "Write tests for auth.go validateToken()" -p T-12345
+→ Analysis complete!
+→ System automatically executes the 3 fix tasks sequentially ✓
 ```
 
-**Completing the current task:**
-```bash
-hearth complete <current-task-id>
-```
-
-**Best practices:**
-1. After analyzing/planning, break work into subtasks using `hearth add`
-2. Use parent/child relationships (-p) to group related work
-3. Use dependencies (-D) when tasks must run in order
-4. Keep task descriptions clear - they become prompts for future iterations
-5. Each task description should be actionable and self-contained
-
-**Example workflow:**
-If you're asked to "improve code quality", you might:
-1. Analyze the codebase
-2. Create subtasks for each issue: `hearth add -t "Fix type safety" -d "Add type checks to user.go"`
-3. Complete your analysis task: `hearth complete <current-task-id>`
-4. Let the system pick up your subtasks on the next run
+**Remember**: Copy your task ID from the top of this prompt!

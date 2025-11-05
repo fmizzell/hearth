@@ -26,7 +26,9 @@ func init() {
 	addCmd.Flags().StringVarP(&addDescription, "description", "d", "", "Task description")
 	addCmd.Flags().StringVarP(&addParent, "parent", "p", "", "Parent task ID (for hierarchical tasks)")
 	addCmd.Flags().StringVarP(&addDependsOn, "depends-on", "D", "", "Task ID this task depends on")
-	addCmd.MarkFlagRequired("title")
+	if err := addCmd.MarkFlagRequired("title"); err != nil {
+		panic(fmt.Sprintf("Failed to mark title flag as required: %v", err))
+	}
 }
 
 func addTask(cmd *cobra.Command, args []string) {

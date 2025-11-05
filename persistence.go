@@ -55,13 +55,21 @@ func (h *Hearth) SaveToFile(filename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close file: %w", closeErr)
+		}
+	}()
 
 	// Acquire exclusive lock
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
 		return fmt.Errorf("failed to lock file: %w", err)
 	}
-	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+	defer func() {
+		if unlockErr := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); unlockErr != nil && err == nil {
+			err = fmt.Errorf("failed to unlock file: %w", unlockErr)
+		}
+	}()
 
 	// Read existing events from disk
 	var existingEvents []atmos.Event

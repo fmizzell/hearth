@@ -3,3 +3,4 @@ code-quality/
 coverage.out
 *.test
 .hearth/
+/hearth

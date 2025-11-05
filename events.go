@@ -15,6 +15,15 @@ type TaskCreated struct {
 func (e TaskCreated) Type() string         { return "task_created" }
 func (e TaskCreated) Timestamp() time.Time { return e.Time }
 
+// TaskStarted event
+type TaskStarted struct {
+	TaskID string
+	Time   time.Time
+}
+
+func (e TaskStarted) Type() string         { return "task_started" }
+func (e TaskStarted) Timestamp() time.Time { return e.Time }
+
 // TaskCompleted event
 type TaskCompleted struct {
 	TaskID string

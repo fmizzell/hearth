@@ -9,11 +9,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	statusFilter string
+)
+
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all tasks",
 	Long:  `List all tasks in the current workspace with their status.`,
 	Run:   listTasks,
+}
+
+func init() {
+	listCmd.Flags().StringVarP(&statusFilter, "status", "s", "", "Filter tasks by status (todo, in-progress, completed)")
 }
 
 func listTasks(cmd *cobra.Command, args []string) {
@@ -34,9 +42,25 @@ func listTasks(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	// Apply status filter if specified
+	filteredTasks := tasks
+	if statusFilter != "" {
+		filteredTasks = make(map[string]*hearth.Task)
+		for id, task := range tasks {
+			if matchesStatus(task.Status, statusFilter) {
+				filteredTasks[id] = task
+			}
+		}
+	}
+
+	if len(filteredTasks) == 0 {
+		fmt.Printf("No tasks found with status: %s\n", statusFilter)
+		return
+	}
+
 	// Sort tasks by ID for consistent display
-	taskIDs := make([]string, 0, len(tasks))
-	for id := range tasks {
+	taskIDs := make([]string, 0, len(filteredTasks))
+	for id := range filteredTasks {
 		taskIDs = append(taskIDs, id)
 	}
 	sort.Strings(taskIDs)
@@ -47,11 +71,23 @@ func listTasks(cmd *cobra.Command, args []string) {
 
 	// First, display root tasks (no parent)
 	for _, id := range taskIDs {
-		task := tasks[id]
+		task := filteredTasks[id]
 		if task.ParentID == nil {
-			displayTask(h, task, 0)
+			displayTaskFiltered(h, task, 0, filteredTasks)
 		}
 	}
+}
+
+// matchesStatus checks if a task status matches the filter
+// Supports "pending" as an alias for "todo"
+func matchesStatus(taskStatus, filter string) bool {
+	// Normalize filter - support "pending" as alias for "todo"
+	normalizedFilter := filter
+	if filter == "pending" {
+		normalizedFilter = "todo"
+	}
+
+	return taskStatus == normalizedFilter
 }
 
 func displayTask(h *hearth.Hearth, task *hearth.Task, indent int) {
@@ -83,6 +119,44 @@ func displayTask(h *hearth.Hearth, task *hearth.Task, indent int) {
 	children := h.GetChildTasks(task.ID)
 	for _, child := range children {
 		displayTask(h, child, indent+1)
+	}
+
+	if indent == 0 {
+		fmt.Println()
+	}
+}
+
+func displayTaskFiltered(h *hearth.Hearth, task *hearth.Task, indent int, filteredTasks map[string]*hearth.Task) {
+	prefix := strings.Repeat("  ", indent)
+
+	// Status icon
+	statusIcon := "○" // todo
+	if task.Status == "completed" {
+		statusIcon = "✓"
+	} else if task.Status == "in-progress" {
+		statusIcon = "→"
+	}
+
+	// Build display line
+	fmt.Printf("%s%s [%s] %s\n", prefix, statusIcon, task.ID, task.Title)
+
+	if task.Description != "" && indent == 0 {
+		fmt.Printf("%s   %s\n", prefix, task.Description)
+	}
+
+	// Display metadata for root tasks
+	if indent == 0 {
+		if task.DependsOn != nil {
+			fmt.Printf("%s   Depends on: %s\n", prefix, *task.DependsOn)
+		}
+	}
+
+	// Display children recursively (only if they're in the filtered set)
+	children := h.GetChildTasks(task.ID)
+	for _, child := range children {
+		if _, inFilter := filteredTasks[child.ID]; inFilter {
+			displayTaskFiltered(h, child, indent+1, filteredTasks)
+		}
 	}
 
 	if indent == 0 {

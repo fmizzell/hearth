@@ -106,9 +106,18 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 			prompt = task.Title // Fallback to title if no description
 		}
 
-		// Append task system instructions to every prompt
-		// This gives Claude the ability to plan and break down work into subtasks
-		fullPrompt := prompt + "\n" + prompts.TaskSystemInstructions
+		// Build full prompt with task context and instructions
+		// Sandwich approach: critical instructions before AND after
+		taskContext := fmt.Sprintf(`
+CURRENT TASK: %s
+CURRENT TASK ID: %s
+
+IMPORTANT: Before starting work, assess if this task should be broken into subtasks.
+If this task involves multiple steps or can be parallelized, you MUST create subtasks first.
+
+`, task.Title, task.ID)
+
+		fullPrompt := taskContext + prompt + "\n" + prompts.TaskSystemInstructions
 
 		// Call Claude with the task description as the prompt
 		fmt.Println("🤖 Starting task...")
@@ -122,16 +131,26 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 		fmt.Println(response)
 		fmt.Println()
 
-		// Mark task completed
+		// Reload hearth to see if Claude created subtasks
+		h, err = hearth.NewHearthWithPersistence(workspaceDir)
+		if err != nil {
+			fatal("Failed to reload hearth: %v", err)
+		}
+
+		// Try to mark task completed
 		err = h.Process(&hearth.TaskCompleted{
 			TaskID: task.ID,
 			Time:   time.Now(),
 		})
-		if err != nil {
+		if err == hearth.ErrEventRejected {
+			// Task has children - it will auto-complete when children finish
+			children := h.GetChildTasks(task.ID)
+			fmt.Printf("✓ Task %s spawned %d subtasks (will auto-complete when subtasks finish)\n", task.ID, len(children))
+		} else if err != nil {
 			fatal("Failed to complete task: %v", err)
+		} else {
+			fmt.Printf("✓ Task %s completed\n", task.ID)
 		}
-
-		fmt.Printf("✓ Task %s completed\n", task.ID)
 		fmt.Println()
 
 		// Save events after each task completion
