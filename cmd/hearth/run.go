@@ -49,7 +49,7 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 		fatal("Failed to create hearth: %v", err)
 	}
 
-	// If a preset is specified, create task
+	// If a preset is specified, create task using helper (loads, creates, saves)
 	if taskPreset != "" {
 		var title, description string
 
@@ -67,14 +67,9 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 		// Generate unique task ID
 		taskID := fmt.Sprintf("T-%d", time.Now().Unix())
 
-		err = h.Process(&hearth.TaskCreated{
-			TaskID:      taskID,
-			Title:       title,
-			Description: description,
-			Time:        time.Now(),
-		})
+		err = createTask(workspaceDir, taskID, title, description, nil, nil)
 		if err != nil {
-			fatal("Failed to create task: %v", err)
+			fatal("Failed to create preset task: %v", err)
 		}
 
 		fmt.Printf("✓ Created task %s from preset '%s'\n\n", taskID, taskPreset)
@@ -84,6 +79,12 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 	iteration := 0
 	for {
 		iteration++
+
+		// Reload hearth to pick up any new tasks created by Claude in previous iteration
+		h, err = hearth.NewHearthWithPersistence(workspaceDir)
+		if err != nil {
+			fatal("Failed to reload hearth: %v", err)
+		}
 
 		// Get next task
 		task := h.GetNextTask()
@@ -105,9 +106,13 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 			prompt = task.Title // Fallback to title if no description
 		}
 
+		// Append task system instructions to every prompt
+		// This gives Claude the ability to plan and break down work into subtasks
+		fullPrompt := prompt + "\n" + prompts.TaskSystemInstructions
+
 		// Call Claude with the task description as the prompt
 		fmt.Println("🤖 Starting task...")
-		response, err := callClaude(prompt, workspaceDir)
+		response, err := callClaude(fullPrompt, workspaceDir)
 		if err != nil {
 			fatal("Failed to call Claude: %v", err)
 		}

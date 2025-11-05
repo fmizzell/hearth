@@ -1,0 +1,48 @@
+
+---
+
+## Task Management System
+
+You have access to the Hearth task orchestration system via CLI commands:
+
+**Creating subtasks:**
+```bash
+hearth add -t "Task title" -d "Detailed description of what to do"
+```
+
+**Creating hierarchical subtasks:**
+```bash
+# First, note your current task ID from the output above
+hearth add -t "Subtask 1" -d "Description..." -p <parent-task-id>
+hearth add -t "Subtask 2" -d "Description..." -p <parent-task-id>
+```
+
+**Creating dependent tasks (must run in sequence):**
+```bash
+hearth add -t "Step 1" -d "Do this first"
+hearth add -t "Step 2" -d "Do this after Step 1" -D <step-1-task-id>
+```
+
+**Viewing all tasks:**
+```bash
+hearth list
+```
+
+**Completing the current task:**
+```bash
+hearth complete <current-task-id>
+```
+
+**Best practices:**
+1. After analyzing/planning, break work into subtasks using `hearth add`
+2. Use parent/child relationships (-p) to group related work
+3. Use dependencies (-D) when tasks must run in order
+4. Keep task descriptions clear - they become prompts for future iterations
+5. Each task description should be actionable and self-contained
+
+**Example workflow:**
+If you're asked to "improve code quality", you might:
+1. Analyze the codebase
+2. Create subtasks for each issue: `hearth add -t "Fix type safety" -d "Add type checks to user.go"`
+3. Complete your analysis task: `hearth complete <current-task-id>`
+4. Let the system pick up your subtasks on the next run

@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/fmizzell/hearth"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
@@ -37,42 +35,22 @@ func addTask(cmd *cobra.Command, args []string) {
 		fatal("Failed to get workspace directory: %v", err)
 	}
 
-	// Load hearth with persistence
-	h, err := hearth.NewHearthWithPersistence(workspaceDir)
-	if err != nil {
-		fatal("Failed to load hearth: %v", err)
-	}
-
 	// Generate task ID
 	taskID := generateTaskID()
 
-	// Build event
-	event := &hearth.TaskCreated{
-		TaskID:      taskID,
-		Title:       addTitle,
-		Description: addDescription,
-		Time:        time.Now(),
-	}
-
+	// Prepare optional parent/depends-on pointers
+	var parentPtr, dependsOnPtr *string
 	if addParent != "" {
-		event.ParentID = &addParent
+		parentPtr = &addParent
 	}
-
 	if addDependsOn != "" {
-		event.DependsOn = &addDependsOn
+		dependsOnPtr = &addDependsOn
 	}
 
-	// Process event
-	err = h.Process(event)
+	// Create task using helper (loads, creates, saves)
+	err = createTask(workspaceDir, taskID, addTitle, addDescription, parentPtr, dependsOnPtr)
 	if err != nil {
-		fatal("Failed to create task: %v", err)
-	}
-
-	// Save to file
-	eventsFile := workspaceDir + "/.hearth/events.json"
-	err = h.SaveToFile(eventsFile)
-	if err != nil {
-		fatal("Failed to save events: %v", err)
+		fatal("%v", err)
 	}
 
 	// Print confirmation

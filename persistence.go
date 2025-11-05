@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/cumulusrpg/atmos"
 )
@@ -41,7 +42,7 @@ func NewHearthWithPersistence(workspaceDir string) (*Hearth, error) {
 	return NewHearth(), nil
 }
 
-// SaveToFile saves the event log to a file
+// SaveToFile saves the event log to a file with proper locking and merging
 func (h *Hearth) SaveToFile(filename string) error {
 	// Ensure directory exists
 	dir := filepath.Dir(filename)
@@ -49,16 +50,80 @@ func (h *Hearth) SaveToFile(filename string) error {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	// Marshal events
-	data, err := h.engine.MarshalEvents(h.engine.GetEvents())
+	// Open file for read/write, create if not exists
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Acquire exclusive lock
+	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
+		return fmt.Errorf("failed to lock file: %w", err)
+	}
+	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+
+	// Read existing events from disk
+	var existingEvents []atmos.Event
+	fileInfo, _ := file.Stat()
+	if fileInfo.Size() > 0 {
+		data := make([]byte, fileInfo.Size())
+		_, err := file.Read(data)
+		if err != nil {
+			return fmt.Errorf("failed to read existing events: %w", err)
+		}
+
+		// Unmarshal existing events
+		temp := NewHearth()
+		existingEvents, err = temp.engine.UnmarshalEvents(data)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal existing events: %w", err)
+		}
+	}
+
+	// Merge events: keep existing + add new ones we have that aren't in existing
+	merged := mergeEvents(existingEvents, h.engine.GetEvents())
+
+	// Marshal merged events
+	data, err := h.engine.MarshalEvents(merged)
 	if err != nil {
 		return fmt.Errorf("failed to marshal events: %w", err)
 	}
 
-	// Write to file
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	// Truncate and write
+	if err := file.Truncate(0); err != nil {
+		return fmt.Errorf("failed to truncate file: %w", err)
+	}
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to seek: %w", err)
+	}
+	if _, err := file.Write(data); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
 	return nil
+}
+
+// mergeEvents combines two event lists, using existing as base and adding any new events from current
+func mergeEvents(existing, current []atmos.Event) []atmos.Event {
+	// Build map of existing event types and timestamps to detect duplicates
+	existingMap := make(map[string]bool)
+	for _, e := range existing {
+		key := fmt.Sprintf("%s-%d", e.Type(), e.Timestamp().UnixNano())
+		existingMap[key] = true
+	}
+
+	// Start with existing events
+	merged := make([]atmos.Event, len(existing))
+	copy(merged, existing)
+
+	// Add any new events from current that aren't in existing
+	for _, e := range current {
+		key := fmt.Sprintf("%s-%d", e.Type(), e.Timestamp().UnixNano())
+		if !existingMap[key] {
+			merged = append(merged, e)
+		}
+	}
+
+	return merged
 }

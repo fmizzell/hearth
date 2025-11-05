@@ -1,9 +1,11 @@
 You are testing the Hearth task orchestration system.
 
-Please respond with:
-1. A friendly greeting
-2. The current working directory you see
-3. List the files in the current directory
-4. A confirmation that the task system is working
+Please do the following:
+1. Give a friendly greeting
+2. Show the current working directory
+3. List the top-level directories/files (just a quick ls)
+4. Create a real subtask that will be executed in the next loop iteration:
+   hearth add -t "Count Go files" -d "Find all .go files in the current directory and subdirectories. Count them and show the total. Use: find . -name '*.go' | wc -l"
+5. Confirm that the task system is working and that the subtask will be automatically picked up
 
-Keep it short and simple.
+Keep your response short and simple. The subtask will be automatically executed by the next iteration of the loop.

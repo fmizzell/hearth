@@ -9,3 +9,6 @@ var CodeQualityAnalysis string
 
 //go:embed hello.txt
 var Hello string
+
+//go:embed task-system.txt
+var TaskSystemInstructions string
