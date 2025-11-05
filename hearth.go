@@ -26,6 +26,7 @@ type Task struct {
 	ID          string
 	Title       string
 	Description string
+	ParentID    *string
 	DependsOn   *string
 	Status      string
 	CreatedAt   time.Time
@@ -75,6 +76,31 @@ func (h *Hearth) GetTask(id string) *Task {
 	return state.Tasks[id]
 }
 
+// GetChildTasks returns all child tasks of a parent task
+func (h *Hearth) GetChildTasks(parentID string) []*Task {
+	state := h.engine.GetState("hearth").(HearthState)
+
+	var children []*Task
+	var childIDs []string
+
+	// Collect child task IDs
+	for id, task := range state.Tasks {
+		if task.ParentID != nil && *task.ParentID == parentID {
+			childIDs = append(childIDs, id)
+		}
+	}
+
+	// Sort for deterministic order
+	sort.Strings(childIDs)
+
+	// Build result
+	for _, id := range childIDs {
+		children = append(children, state.Tasks[id])
+	}
+
+	return children
+}
+
 // GetNextTask returns the next task to work on (first todo task with satisfied dependencies)
 func (h *Hearth) GetNextTask() *Task {
 	state := h.engine.GetState("hearth").(HearthState)
@@ -92,6 +118,18 @@ func (h *Hearth) GetNextTask() *Task {
 	for _, id := range taskIDs {
 		task := state.Tasks[id]
 		if task.Status != "todo" {
+			continue
+		}
+
+		// Skip tasks that have children (parent/epic tasks - work on leaves only)
+		hasChildren := false
+		for _, otherTask := range state.Tasks {
+			if otherTask.ParentID != nil && *otherTask.ParentID == id {
+				hasChildren = true
+				break
+			}
+		}
+		if hasChildren {
 			continue
 		}
 

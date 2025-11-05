@@ -78,6 +78,106 @@ func TestHearthJourney(t *testing.T) {
 	// Step 9: No more tasks
 	next = h.GetNextTask()
 	assert.Nil(t, next)
+
+	// Step 10: Test hierarchical tasks (parent/child relationships)
+	// Create root EPIC task
+	err = h.Process(TaskCreated{
+		TaskID:      "T4",
+		Title:       "Improve code quality",
+		Description: "Root epic for code improvements",
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Create child: Analysis (child of T4)
+	err = h.Process(TaskCreated{
+		TaskID:      "T5",
+		Title:       "Analyze codebase",
+		Description: "Run analysis tools and identify issues",
+		ParentID:    strPtr("T4"),
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Create child: Apply fixes (child of T4, depends on T5)
+	err = h.Process(TaskCreated{
+		TaskID:      "T6",
+		Title:       "Apply priority fixes",
+		Description: "Fix high priority issues",
+		ParentID:    strPtr("T4"),
+		DependsOn:   strPtr("T5"),
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Create nested children (children of T6 - parallel fix tasks)
+	err = h.Process(TaskCreated{
+		TaskID:      "T7",
+		Title:       "Fix type assertions",
+		Description: "Add safety checks",
+		ParentID:    strPtr("T6"),
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	err = h.Process(TaskCreated{
+		TaskID:      "T8",
+		Title:       "Fix task ordering",
+		Description: "Add deterministic ordering",
+		ParentID:    strPtr("T6"),
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	// Verify parent has children
+	children := h.GetChildTasks("T4")
+	assert.Equal(t, 2, len(children))
+	assert.Equal(t, "T5", children[0].ID)
+	assert.Equal(t, "T6", children[1].ID)
+
+	// Verify nested parent has children
+	nestedChildren := h.GetChildTasks("T6")
+	assert.Equal(t, 2, len(nestedChildren))
+	assert.Equal(t, "T7", nestedChildren[0].ID)
+	assert.Equal(t, "T8", nestedChildren[1].ID)
+
+	// Verify child knows its parent
+	task = h.GetTask("T5")
+	assert.NotNil(t, task.ParentID)
+	assert.Equal(t, "T4", *task.ParentID)
+
+	// T5 should be next (T6 depends on it, and T6 has children so won't be returned)
+	next = h.GetNextTask()
+	assert.Equal(t, "T5", next.ID)
+
+	// Complete T5
+	h.Process(TaskCompleted{TaskID: "T5", Time: time.Now()})
+
+	// Now T7 and T8 are available (T6 is skipped because it has children)
+	next = h.GetNextTask()
+	assert.Equal(t, "T7", next.ID) // First by sort order
+
+	// Complete T7
+	h.Process(TaskCompleted{TaskID: "T7", Time: time.Now()})
+
+	// T8 is next
+	next = h.GetNextTask()
+	assert.Equal(t, "T8", next.ID)
+
+	// Complete T8
+	h.Process(TaskCompleted{TaskID: "T8", Time: time.Now()})
+
+	// T6 should auto-complete (all children done)
+	task = h.GetTask("T6")
+	assert.Equal(t, "completed", task.Status)
+
+	// T4 should also auto-complete (all children done)
+	task = h.GetTask("T4")
+	assert.Equal(t, "completed", task.Status)
+
+	// All done
+	next = h.GetNextTask()
+	assert.Nil(t, next)
 	//
 	// // Step 4: Get next task (should be T1, since T2 depends on it)
 	// next := h.GetNextTask()

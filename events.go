@@ -7,6 +7,7 @@ type TaskCreated struct {
 	TaskID      string
 	Title       string
 	Description string
+	ParentID    *string
 	DependsOn   *string
 	Time        time.Time
 }
