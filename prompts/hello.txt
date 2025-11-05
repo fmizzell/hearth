@@ -1,0 +1,9 @@
+You are testing the Hearth task orchestration system.
+
+Please respond with:
+1. A friendly greeting
+2. The current working directory you see
+3. List the files in the current directory
+4. A confirmation that the task system is working
+
+Keep it short and simple.

@@ -4,140 +4,62 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"time"
 
-	"github.com/fmizzell/hearth"
-	"github.com/fmizzell/hearth/prompts"
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	// Get target directory from command line
-	if len(os.Args) < 2 {
-		log.Fatal("Usage: hearth <target-directory>")
-	}
-	targetDir := os.Args[1]
+var (
+	workspaceFlag string
+)
 
-	// Verify target directory exists
-	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
-		log.Fatalf("Target directory does not exist: %s", targetDir)
-	}
-
-	// Make target directory absolute
-	absTargetDir, err := filepath.Abs(targetDir)
-	if err != nil {
-		log.Fatalf("Failed to get absolute path: %v", err)
-	}
-
-	fmt.Println("🔥 Hearth - Code Quality Analysis")
-	fmt.Printf("📂 Target: %s\n", absTargetDir)
-	fmt.Println()
-
-	// Create hearth instance with persistence
-	h, err := hearth.NewHearthWithPersistence(absTargetDir)
-	if err != nil {
-		log.Fatalf("Failed to create hearth: %v", err)
-	}
-
-	// Add code quality analysis task (only if not already exists)
-	if h.GetTask("T1") == nil {
-		err = h.Process(&hearth.TaskCreated{
-			TaskID:      "T1",
-			Title:       "Analyze codebase for quality issues",
-			Description: fmt.Sprintf("Perform comprehensive code quality analysis on: %s", absTargetDir),
-			Time:        time.Now(),
-		})
-		if err != nil {
-			log.Fatalf("Failed to create task: %v", err)
-		}
-	}
-
-	// Main loop
-	iteration := 0
-	for {
-		iteration++
-
-		// Get next task
-		task := h.GetNextTask()
-		if task == nil {
-			fmt.Println("✅ All tasks completed!")
-			break
-		}
-
-		fmt.Printf("📋 Iteration %d: Working on %s\n", iteration, task.ID)
-		fmt.Printf("   Title: %s\n", task.Title)
-		fmt.Printf("   Description: %s\n", task.Description)
-		fmt.Println()
-
-		// Create output directory for code quality reports
-		codeQualityDir := filepath.Join(absTargetDir, "code-quality")
-		if err := os.MkdirAll(codeQualityDir, 0755); err != nil {
-			log.Fatalf("Failed to create code-quality directory: %v", err)
-		}
-		fmt.Printf("📊 Output: %s\n", codeQualityDir)
-
-		// Use prompt from prompts package
-		prompt := prompts.CodeQualityAnalysis
-
-		// Call Claude (working directly in target directory)
-		fmt.Println("🤖 Starting analysis...")
-		response, err := callClaude(prompt, absTargetDir)
-		if err != nil {
-			log.Fatalf("Failed to call Claude: %v", err)
-		}
-
-		fmt.Println()
-		fmt.Println("💬 Claude's response:")
-		fmt.Println(response)
-		fmt.Println()
-
-		// Mark task completed
-		err = h.Process(&hearth.TaskCompleted{
-			TaskID: task.ID,
-			Time:   time.Now(),
-		})
-		if err != nil {
-			log.Fatalf("Failed to complete task: %v", err)
-		}
-
-		fmt.Printf("✓ Task %s completed\n", task.ID)
-		fmt.Println()
-
-		// Save events after each task completion
-		eventsFile := filepath.Join(absTargetDir, ".hearth", "events.json")
-		err = h.SaveToFile(eventsFile)
-		if err != nil {
-			log.Fatalf("Failed to save events: %v", err)
-		}
-	}
-
-	// Final save
-	eventsFile := filepath.Join(absTargetDir, ".hearth", "events.json")
-	err = h.SaveToFile(eventsFile)
-	if err != nil {
-		log.Fatalf("Failed to save events: %v", err)
-	}
-
-	fmt.Println("🎉 Hearth finished!")
+var rootCmd = &cobra.Command{
+	Use:   "hearth",
+	Short: "Hearth - Task orchestration for autonomous coding",
+	Long:  `Hearth is a minimalist task orchestration system for autonomous coding with Claude Code.`,
 }
 
-// callClaude invokes the claude CLI in a temporary workspace and returns the response
-func callClaude(prompt, workDir string) (string, error) {
-	cmd := exec.Command("claude",
-		"--print",                        // Non-interactive output
-		"--dangerously-skip-permissions", // Skip permission prompts (safe: sandboxed to workDir)
-		prompt,
-	)
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
 
-	// Set Claude's working directory to the temp workspace
-	cmd.Dir = workDir
+func init() {
+	// Global flags
+	rootCmd.PersistentFlags().StringVarP(&workspaceFlag, "workspace", "w", "", "Workspace directory (defaults to current directory)")
 
-	// Capture output
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("claude command failed: %w\nOutput: %s", err, string(output))
+	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(completeCmd)
+}
+
+func getWorkspaceDir() (string, error) {
+	var dir string
+
+	// Use --workspace flag if provided
+	if workspaceFlag != "" {
+		dir = workspaceFlag
+	} else {
+		// Default to current working directory
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("failed to get current directory: %w", err)
+		}
+		dir = cwd
 	}
 
-	return string(output), nil
+	// Make absolute
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	return absDir, nil
+}
+
+func fatal(format string, args ...interface{}) {
+	log.Fatalf(format, args...)
 }

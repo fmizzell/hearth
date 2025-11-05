@@ -6,3 +6,6 @@ import (
 
 //go:embed code-quality-analysis.txt
 var CodeQualityAnalysis string
+
+//go:embed hello.txt
+var Hello string
