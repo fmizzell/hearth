@@ -151,21 +151,21 @@ func TestHearthJourney(t *testing.T) {
 	assert.Equal(t, "T5", next.ID)
 
 	// Complete T5
-	h.Process(&TaskCompleted{TaskID: "T5", Time: time.Now()})
+	_ = h.Process(&TaskCompleted{TaskID: "T5", Time: time.Now()})
 
 	// Now T7 and T8 are available (T6 is skipped because it has children)
 	next = h.GetNextTask()
 	assert.Equal(t, "T7", next.ID) // First by sort order
 
 	// Complete T7
-	h.Process(&TaskCompleted{TaskID: "T7", Time: time.Now()})
+	_ = h.Process(&TaskCompleted{TaskID: "T7", Time: time.Now()})
 
 	// T8 is next
 	next = h.GetNextTask()
 	assert.Equal(t, "T8", next.ID)
 
 	// Complete T8
-	h.Process(&TaskCompleted{TaskID: "T8", Time: time.Now()})
+	_ = h.Process(&TaskCompleted{TaskID: "T8", Time: time.Now()})
 
 	// T6 should auto-complete (all children done)
 	task = h.GetTask("T6")

@@ -77,7 +77,7 @@ func TestExecuteTasks_WithSubtasks(t *testing.T) {
 		// First call: parent creates subtask
 		if callCount == 1 {
 			h2, _ := hearth.NewHearthWithPersistence(workDir)
-			h2.Process(&hearth.TaskCreated{
+			_ = h2.Process(&hearth.TaskCreated{
 				TaskID:   "T-child",
 				Title:    "Subtask",
 				ParentID: &parentID,
@@ -144,13 +144,13 @@ func TestExecuteTasks_ParentSummary(t *testing.T) {
 		// First call: parent creates two children
 		if callCount == 1 {
 			h2, _ := hearth.NewHearthWithPersistence(workDir)
-			h2.Process(&hearth.TaskCreated{
+			_ = h2.Process(&hearth.TaskCreated{
 				TaskID:   "T-child-1",
 				Title:    "Count files",
 				ParentID: &parentID,
 				Time:     time.Now(),
 			})
-			h2.Process(&hearth.TaskCreated{
+			_ = h2.Process(&hearth.TaskCreated{
 				TaskID:   "T-child-2",
 				Title:    "List packages",
 				ParentID: &parentID,
@@ -228,13 +228,13 @@ func TestExecuteTasks_ContextInjection(t *testing.T) {
 		// First call: root creates two children
 		if callCount == 1 {
 			h2, _ := hearth.NewHearthWithPersistence(workDir)
-			h2.Process(&hearth.TaskCreated{
+			_ = h2.Process(&hearth.TaskCreated{
 				TaskID:   "T-child-1",
 				Title:    "First child",
 				ParentID: &rootID,
 				Time:     time.Now(),
 			})
-			h2.Process(&hearth.TaskCreated{
+			_ = h2.Process(&hearth.TaskCreated{
 				TaskID:   "T-child-2",
 				Title:    "Second child",
 				ParentID: &rootID,

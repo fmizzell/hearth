@@ -17,7 +17,7 @@ func setupTestWorkspace(t *testing.T) (string, func()) {
 	assert.NoError(t, err)
 
 	cleanup := func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir) // Ignore cleanup errors
 	}
 
 	return tmpDir, cleanup
@@ -32,9 +32,9 @@ func captureOutput(f func()) string {
 
 	f()
 
-	w.Close()
+	_ = w.Close() // Ignore close errors in test helper
 	os.Stdout = old
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r) // Ignore read errors in test helper
 	return buf.String()
 }
 
@@ -617,8 +617,4 @@ func TestListBasicIntegration(t *testing.T) {
 	assert.Contains(t, output, "[T4]")
 	assert.Contains(t, output, "[T5]")
 	assert.Contains(t, output, "[T6]")
-}
-
-func strPtr(s string) *string {
-	return &s
 }

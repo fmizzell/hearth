@@ -142,11 +142,14 @@ func displayTaskLine(task *hearth.Task, indent int) {
 	prefix := strings.Repeat("  ", indent)
 
 	// Status icon
-	statusIcon := "○" // todo
-	if task.Status == "completed" {
+	var statusIcon string
+	switch task.Status {
+	case "completed":
 		statusIcon = "✓"
-	} else if task.Status == "in-progress" {
+	case "in-progress":
 		statusIcon = "→"
+	default: // "todo"
+		statusIcon = "○"
 	}
 
 	fmt.Printf("%s%s [%s] %s\n", prefix, statusIcon, task.ID, task.Title)
@@ -162,52 +165,4 @@ func matchesStatus(taskStatus, filter string) bool {
 	}
 
 	return taskStatus == normalizedFilter
-}
-
-func displayTask(h *hearth.Hearth, task *hearth.Task, indent int) {
-	prefix := strings.Repeat("  ", indent)
-
-	// Status icon
-	statusIcon := "○" // todo
-	if task.Status == "completed" {
-		statusIcon = "✓"
-	} else if task.Status == "in-progress" {
-		statusIcon = "→"
-	}
-
-	// Build display line - just show title for clean hierarchy view
-	fmt.Printf("%s%s [%s] %s\n", prefix, statusIcon, task.ID, task.Title)
-
-	// Display children recursively
-	children := h.GetChildTasks(task.ID)
-	for _, child := range children {
-		displayTask(h, child, indent+1)
-	}
-}
-
-func displayTaskFiltered(h *hearth.Hearth, task *hearth.Task, indent int, filteredTasks map[string]*hearth.Task) {
-	prefix := strings.Repeat("  ", indent)
-
-	// Status icon
-	statusIcon := "○" // todo
-	if task.Status == "completed" {
-		statusIcon = "✓"
-	} else if task.Status == "in-progress" {
-		statusIcon = "→"
-	}
-
-	// Build display line - just show title for clean hierarchy view
-	fmt.Printf("%s%s [%s] %s\n", prefix, statusIcon, task.ID, task.Title)
-
-	// Display children recursively (only if they're in the filtered set)
-	children := h.GetChildTasks(task.ID)
-	for _, child := range children {
-		if _, inFilter := filteredTasks[child.ID]; inFilter {
-			displayTaskFiltered(h, child, indent+1, filteredTasks)
-		}
-	}
-
-	if indent == 0 {
-		fmt.Println()
-	}
 }

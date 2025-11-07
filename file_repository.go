@@ -82,13 +82,21 @@ func (r *FileRepository) withFileLock(fn func(*os.File) error) error {
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close file: %v\n", closeErr)
+		}
+	}()
 
 	// Acquire exclusive lock
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
 		return fmt.Errorf("failed to lock file: %w", err)
 	}
-	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+	defer func() {
+		if unlockErr := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); unlockErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to unlock file: %v\n", unlockErr)
+		}
+	}()
 
 	// Execute function with locked file
 	return fn(file)
