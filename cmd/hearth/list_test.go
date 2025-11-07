@@ -23,12 +23,6 @@ func setupTestWorkspace(t *testing.T) (string, func()) {
 	return tmpDir, cleanup
 }
 
-// saveTestHearth saves hearth events to the workspace's events.json file
-func saveTestHearth(t *testing.T, h *hearth.Hearth, tmpDir string) {
-	err := h.SaveToFile(tmpDir + "/.hearth/events.json")
-	assert.NoError(t, err)
-}
-
 // captureOutput captures stdout during command execution
 func captureOutput(f func()) string {
 	var buf bytes.Buffer
@@ -85,8 +79,7 @@ func TestListWithStatusFilter_Todo(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to disk so they can be reloaded by listTasks
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Test filtering by todo status
 	oldWorkspaceFlag := workspaceFlag
@@ -143,8 +136,7 @@ func TestListWithStatusFilter_Pending(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to disk
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Test filtering by "pending" (alias for "todo")
 	oldWorkspaceFlag := workspaceFlag
@@ -197,8 +189,7 @@ func TestListWithStatusFilter_InProgress(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to disk so they can be reloaded by listTasks
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Test filtering by in-progress status
 	oldWorkspaceFlag := workspaceFlag
@@ -264,8 +255,7 @@ func TestListWithStatusFilter_Completed(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to disk
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Test filtering by completed status
 	oldWorkspaceFlag := workspaceFlag
@@ -295,11 +285,10 @@ func TestListEmptyWorkspace(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with NO tasks
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	_, err := hearth.NewHearthWithPersistence(tmpDir)
 	assert.NoError(t, err)
 
-	// Save empty hearth to disk
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Set workspace to test directory
 	oldWorkspaceFlag := workspaceFlag
@@ -336,8 +325,7 @@ func TestListWithStatusFilter_NoMatches(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to disk
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Test filtering by completed status (should find none)
 	oldWorkspaceFlag := workspaceFlag
@@ -400,8 +388,7 @@ func TestListWithStatusFilter_HierarchicalTasks(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to disk
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Test filtering by todo status - should show parent and todo child
 	oldWorkspaceFlag := workspaceFlag
@@ -455,8 +442,7 @@ func TestListWithoutStatusFilter(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to disk
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Test without any filter
 	oldWorkspaceFlag := workspaceFlag
@@ -585,8 +571,7 @@ func TestListBasicIntegration(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to disk
-	saveTestHearth(t, h, tmpDir)
+	// Events auto-persist via FileRepository
 
 	// Execute list command with no filters
 	oldWorkspaceFlag := workspaceFlag
@@ -621,18 +606,9 @@ func TestListBasicIntegration(t *testing.T) {
 	assert.Contains(t, output, "Create button component")
 	assert.Contains(t, output, "Create form component")
 
-	// Verify descriptions are shown for root tasks
-	assert.Contains(t, output, "Add JWT-based authentication to the API")
-	assert.Contains(t, output, "Create initial migration for users table")
-	assert.Contains(t, output, "Add sample users to database")
-	assert.Contains(t, output, "Create reusable UI components")
-
 	// Verify status icons
 	assert.Contains(t, output, "○") // Todo status icon
 	assert.Contains(t, output, "✓") // Completed status icon
-
-	// Verify dependency information is displayed
-	assert.Contains(t, output, "Depends on: T2")
 
 	// Verify the output contains the proper task IDs in brackets format
 	assert.Contains(t, output, "[T1]")

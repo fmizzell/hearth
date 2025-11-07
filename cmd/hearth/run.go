@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"github.com/fmizzell/hearth"
@@ -80,13 +79,7 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 	for {
 		iteration++
 
-		// Reload hearth to pick up any new tasks created by Claude in previous iteration
-		h, err = hearth.NewHearthWithPersistence(workspaceDir)
-		if err != nil {
-			fatal("Failed to reload hearth: %v", err)
-		}
-
-		// Get next task
+		// Get next task (FileRepository automatically reads latest state from disk)
 		task := h.GetNextTask()
 		if task == nil {
 			fmt.Println("✅ All tasks completed!")
@@ -131,13 +124,7 @@ If this task involves multiple steps or can be parallelized, you MUST create sub
 		fmt.Println(response)
 		fmt.Println()
 
-		// Reload hearth to see if Claude created subtasks
-		h, err = hearth.NewHearthWithPersistence(workspaceDir)
-		if err != nil {
-			fatal("Failed to reload hearth: %v", err)
-		}
-
-		// Try to mark task completed
+		// Try to mark task completed (FileRepository auto-persists and auto-reloads)
 		err = h.Process(&hearth.TaskCompleted{
 			TaskID: task.ID,
 			Time:   time.Now(),
@@ -152,20 +139,6 @@ If this task involves multiple steps or can be parallelized, you MUST create sub
 			fmt.Printf("✓ Task %s completed\n", task.ID)
 		}
 		fmt.Println()
-
-		// Save events after each task completion
-		eventsFile := filepath.Join(workspaceDir, ".hearth", "events.json")
-		err = h.SaveToFile(eventsFile)
-		if err != nil {
-			fatal("Failed to save events: %v", err)
-		}
-	}
-
-	// Final save
-	eventsFile := filepath.Join(workspaceDir, ".hearth", "events.json")
-	err = h.SaveToFile(eventsFile)
-	if err != nil {
-		fatal("Failed to save events: %v", err)
 	}
 
 	fmt.Println("🎉 Hearth finished!")

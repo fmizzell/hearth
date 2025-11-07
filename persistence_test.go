@@ -40,10 +40,8 @@ func TestEventPersistence(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events to file
+	// Events auto-persist via FileRepository
 	eventsFile := filepath.Join(tmpDir, ".hearth", "events.json")
-	err = h1.SaveToFile(eventsFile)
-	assert.NoError(t, err)
 
 	// Verify .hearth directory was created
 	hearthDir := filepath.Join(tmpDir, ".hearth")
@@ -82,9 +80,7 @@ func TestEventPersistence(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save events
-	err = h2.SaveToFile(eventsFile)
-	assert.NoError(t, err)
+	// Events auto-persist via FileRepository
 
 	// Load h3
 	h3, err := NewHearthWithPersistence(tmpDir)
@@ -139,9 +135,7 @@ func TestEventPersistence_EventMerging(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	eventsFile := filepath.Join(tmpDir, ".hearth", "events.json")
-	err = h1.SaveToFile(eventsFile)
-	assert.NoError(t, err)
+	// Events auto-persist via FileRepository
 
 	// Instance 2: Load existing, add T2, save
 	h2, err := NewHearthWithPersistence(tmpDir)
@@ -155,8 +149,7 @@ func TestEventPersistence_EventMerging(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = h2.SaveToFile(eventsFile)
-	assert.NoError(t, err)
+	// Events auto-persist via FileRepository
 
 	// Instance 3: Load and verify both tasks are present
 	h3, err := NewHearthWithPersistence(tmpDir)
@@ -234,10 +227,7 @@ func TestEventPersistence_ComplexHierarchy(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save
-	eventsFile := filepath.Join(tmpDir, ".hearth", "events.json")
-	err = h1.SaveToFile(eventsFile)
-	assert.NoError(t, err)
+	// Events auto-persist via FileRepository
 
 	// Load new instance and verify all relationships preserved
 	h2, err := NewHearthWithPersistence(tmpDir)
@@ -308,10 +298,7 @@ func TestEventPersistence_Dependencies(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Save
-	eventsFile := filepath.Join(tmpDir, ".hearth", "events.json")
-	err = h1.SaveToFile(eventsFile)
-	assert.NoError(t, err)
+	// Events auto-persist via FileRepository
 
 	// Load and verify dependencies preserved
 	h2, err := NewHearthWithPersistence(tmpDir)

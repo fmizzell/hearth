@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/fmizzell/hearth"
@@ -26,17 +25,10 @@ func createTask(workspaceDir, taskID, title, description string, parentID, depen
 		Time:        time.Now(),
 	}
 
-	// Process event
+	// Process event (auto-persists via FileRepository)
 	err = h.Process(event)
 	if err != nil {
 		return fmt.Errorf("failed to create task: %w", err)
-	}
-
-	// Save to file
-	eventsFile := filepath.Join(workspaceDir, ".hearth", "events.json")
-	err = h.SaveToFile(eventsFile)
-	if err != nil {
-		return fmt.Errorf("failed to save events: %w", err)
 	}
 
 	return nil

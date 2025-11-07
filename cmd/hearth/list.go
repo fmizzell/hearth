@@ -101,28 +101,13 @@ func displayTask(h *hearth.Hearth, task *hearth.Task, indent int) {
 		statusIcon = "→"
 	}
 
-	// Build display line
+	// Build display line - just show title for clean hierarchy view
 	fmt.Printf("%s%s [%s] %s\n", prefix, statusIcon, task.ID, task.Title)
-
-	if task.Description != "" && indent == 0 {
-		fmt.Printf("%s   %s\n", prefix, task.Description)
-	}
-
-	// Display metadata for root tasks
-	if indent == 0 {
-		if task.DependsOn != nil {
-			fmt.Printf("%s   Depends on: %s\n", prefix, *task.DependsOn)
-		}
-	}
 
 	// Display children recursively
 	children := h.GetChildTasks(task.ID)
 	for _, child := range children {
 		displayTask(h, child, indent+1)
-	}
-
-	if indent == 0 {
-		fmt.Println()
 	}
 }
 
@@ -137,19 +122,8 @@ func displayTaskFiltered(h *hearth.Hearth, task *hearth.Task, indent int, filter
 		statusIcon = "→"
 	}
 
-	// Build display line
+	// Build display line - just show title for clean hierarchy view
 	fmt.Printf("%s%s [%s] %s\n", prefix, statusIcon, task.ID, task.Title)
-
-	if task.Description != "" && indent == 0 {
-		fmt.Printf("%s   %s\n", prefix, task.Description)
-	}
-
-	// Display metadata for root tasks
-	if indent == 0 {
-		if task.DependsOn != nil {
-			fmt.Printf("%s   Depends on: %s\n", prefix, *task.DependsOn)
-		}
-	}
 
 	// Display children recursively (only if they're in the filtered set)
 	children := h.GetChildTasks(task.ID)

@@ -42,20 +42,13 @@ func completeTask(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Process completion event
+	// Process completion event (auto-persists via FileRepository)
 	err = h.Process(&hearth.TaskCompleted{
 		TaskID: taskID,
 		Time:   time.Now(),
 	})
 	if err != nil {
 		fatal("Failed to complete task: %v", err)
-	}
-
-	// Save to file
-	eventsFile := workspaceDir + "/.hearth/events.json"
-	err = h.SaveToFile(eventsFile)
-	if err != nil {
-		fatal("Failed to save events: %v", err)
 	}
 
 	fmt.Printf("✓ Task completed: %s\n", taskID)
