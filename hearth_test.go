@@ -354,3 +354,42 @@ func strPtr(s string) *string {
 	return &s
 }
 
+// TestFindNextTask_DepthFirst tests the depth-first task selection algorithm
+func TestFindNextTask_DepthFirst(t *testing.T) {
+	baseTime := time.Now()
+
+	root := &Task{ID: "T-root", Status: "todo", CreatedAt: baseTime}
+	child1 := &Task{ID: "T-child1", Status: "todo", ParentID: strPtr("T-root"), CreatedAt: baseTime.Add(1 * time.Second)}
+	child2 := &Task{ID: "T-child2", Status: "todo", ParentID: strPtr("T-root"), CreatedAt: baseTime.Add(2 * time.Second)}
+	child3 := &Task{ID: "T-child3", Status: "todo", ParentID: strPtr("T-root"), CreatedAt: baseTime.Add(3 * time.Second)}
+	gc1 := &Task{ID: "T-gc1", Status: "todo", ParentID: strPtr("T-child1"), CreatedAt: baseTime.Add(4 * time.Second)}
+	gc2 := &Task{ID: "T-gc2", Status: "todo", ParentID: strPtr("T-child1"), CreatedAt: baseTime.Add(5 * time.Second)}
+
+	tasks := []*Task{root, child1, child2, child3, gc1, gc2}
+
+	// Should get T-gc1 first (depth-first into child1's subtree)
+	next := findNextTask(tasks)
+	assert.Equal(t, "T-gc1", next.ID)
+
+	// Mark gc1 complete
+	gc1.Status = "completed"
+
+	// Should get T-gc2 (continue in child1's subtree)
+	next = findNextTask(tasks)
+	assert.Equal(t, "T-gc2", next.ID)
+
+	// Mark gc2 complete
+	gc2.Status = "completed"
+
+	// Should get T-child2 (child1's subtree done, move to next sibling)
+	next = findNextTask(tasks)
+	assert.Equal(t, "T-child2", next.ID)
+
+	// Mark child2 complete
+	child2.Status = "completed"
+
+	// Should get T-child3
+	next = findNextTask(tasks)
+	assert.Equal(t, "T-child3", next.ID)
+}
+

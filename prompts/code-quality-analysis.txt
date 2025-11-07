@@ -1,17 +1,22 @@
 You are a code quality expert analyzing a codebase.
 
-The codebase is in the current directory.
+CRITICAL: This is a complex multi-step analysis task. You MUST break it into subtasks.
+Do NOT attempt to do everything in one iteration.
 
-Please:
-1. Explore the codebase structure
-2. Run static analysis tools if available (golangci-lint, gofmt, go vet, etc)
-3. Identify code quality issues, complexity hotspots, and improvement opportunities
-4. Generate a comprehensive markdown report at: ./code-quality/analysis-report.md
+Your job right now is to CREATE SUBTASKS for this analysis work.
 
-Include in your report:
+Create separate subtasks for:
+1. Exploring codebase structure and identifying files to analyze
+2. Running static analysis tools (golangci-lint, gofmt, go vet, etc)
+3. Identifying code quality issues and complexity hotspots
+4. Generating the final comprehensive report at ./code-quality/analysis-report.md
+
+Use `hearth add` with the -p flag and YOUR CURRENT TASK ID to create these subtasks now.
+
+The final report should include:
 - Executive summary
 - Key findings (prioritized by severity)
 - Specific code locations that need attention (file:line)
 - Actionable recommendations
 
-When done, respond with a summary of your top findings.
+After creating the subtasks, confirm they were created successfully.

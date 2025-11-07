@@ -58,24 +58,98 @@ func listTasks(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Sort tasks by ID for consistent display
-	taskIDs := make([]string, 0, len(filteredTasks))
-	for id := range filteredTasks {
-		taskIDs = append(taskIDs, id)
-	}
-	sort.Strings(taskIDs)
+	// Get tasks in depth-first execution order
+	orderedTasks := getTasksInDepthFirstOrder(filteredTasks)
 
 	// Display task tree
 	fmt.Println("📋 Tasks:")
 	fmt.Println()
 
-	// First, display root tasks (no parent)
-	for _, id := range taskIDs {
-		task := filteredTasks[id]
+	// Display each task in depth-first order with proper indentation
+	for _, task := range orderedTasks {
+		indent := calculateIndent(task, filteredTasks)
+		displayTaskLine(task, indent)
+	}
+}
+
+// getTasksInDepthFirstOrder returns tasks sorted in depth-first execution order
+func getTasksInDepthFirstOrder(tasks map[string]*hearth.Task) []*hearth.Task {
+	// Convert map to slice
+	var taskSlice []*hearth.Task
+	for _, task := range tasks {
+		taskSlice = append(taskSlice, task)
+	}
+
+	// Find roots and sort by creation time
+	var roots []*hearth.Task
+	for _, task := range taskSlice {
 		if task.ParentID == nil {
-			displayTaskFiltered(h, task, 0, filteredTasks)
+			roots = append(roots, task)
 		}
 	}
+	sort.Slice(roots, func(i, j int) bool {
+		return roots[i].CreatedAt.Before(roots[j].CreatedAt)
+	})
+
+	// Collect all tasks in depth-first order
+	var ordered []*hearth.Task
+	taskMap := tasks // Use the original map
+	for _, root := range roots {
+		collectDepthFirst(root, taskMap, &ordered)
+	}
+
+	return ordered
+}
+
+// collectDepthFirst recursively collects tasks in depth-first order
+func collectDepthFirst(task *hearth.Task, taskMap map[string]*hearth.Task, result *[]*hearth.Task) {
+	*result = append(*result, task)
+
+	// Get children and sort by creation time
+	var children []*hearth.Task
+	for _, t := range taskMap {
+		if t.ParentID != nil && *t.ParentID == task.ID {
+			children = append(children, t)
+		}
+	}
+	sort.Slice(children, func(i, j int) bool {
+		return children[i].CreatedAt.Before(children[j].CreatedAt)
+	})
+
+	// Recursively collect children
+	for _, child := range children {
+		collectDepthFirst(child, taskMap, result)
+	}
+}
+
+// calculateIndent calculates the indentation level for a task based on its depth
+func calculateIndent(task *hearth.Task, taskMap map[string]*hearth.Task) int {
+	depth := 0
+	current := task
+	for current.ParentID != nil {
+		parent := taskMap[*current.ParentID]
+		if parent == nil {
+			break
+		}
+		depth++
+		current = parent
+	}
+	return depth
+}
+
+// displayTaskLine displays a single task line with proper formatting
+func displayTaskLine(task *hearth.Task, indent int) {
+	prefix := strings.Repeat("  ", indent)
+
+	// Status icon
+	statusIcon := "○" // todo
+	if task.Status == "completed" {
+		statusIcon = "✓"
+	} else if task.Status == "in-progress" {
+		statusIcon = "→"
+	}
+
+	fmt.Printf("%s%s [%s] %s\n", prefix, statusIcon, task.ID, task.Title)
 }
 
 // matchesStatus checks if a task status matches the filter
