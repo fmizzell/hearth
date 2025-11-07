@@ -4,8 +4,11 @@
 
 Hearth is a hierarchical task management system that enables AI agents to break down complex coding tasks into smaller, manageable subtasks and execute them autonomously with full context preservation across the entire task tree.
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/fmizzell/hearth)](https://goreportcard.com/report/github.com/fmizzell/hearth)
+[![CI](https://github.com/fmizzell/hearth/workflows/CI/badge.svg)](https://github.com/fmizzell/hearth/actions)
+[![codecov](https://codecov.io/gh/fmizzell/hearth/branch/main/graph/badge.svg)](https://codecov.io/gh/fmizzell/hearth)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/fmizzell/hearth)](https://github.com/fmizzell/hearth/blob/main/go.mod)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/go-1.24+-00ADD8?logo=go)](https://go.dev/)
 
 ## What is Hearth?
 
