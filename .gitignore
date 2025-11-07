@@ -1,6 +1,32 @@
+# Binaries
 bin/
-code-quality/
-coverage.out
-*.test
-.hearth/
 /hearth
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.test
+*.out
+coverage.out
+coverage-temp.out
+
+# Runtime data
+.hearth/
+code-quality/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated documentation
+PROJECT_OVERVIEW.md
