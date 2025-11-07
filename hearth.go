@@ -107,18 +107,19 @@ func (h *Hearth) GetChildTasks(parentID string) []*Task {
 func (h *Hearth) GetNextTask() *Task {
 	state := h.engine.GetState("hearth").(HearthState)
 
-	// Collect all tasks in deterministic order (sorted by ID)
-	var taskIDs []string
-	for id := range state.Tasks {
-		taskIDs = append(taskIDs, id)
+	// Collect all tasks
+	var tasks []*Task
+	for _, task := range state.Tasks {
+		tasks = append(tasks, task)
 	}
 
-	// Sort to ensure deterministic iteration
-	sort.Strings(taskIDs)
+	// Sort by creation time to process tasks in the order they were created
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].CreatedAt.Before(tasks[j].CreatedAt)
+	})
 
 	// Find first task with status "todo" that has no unsatisfied dependencies
-	for _, id := range taskIDs {
-		task := state.Tasks[id]
+	for _, task := range tasks {
 		if task.Status != "todo" {
 			continue
 		}
@@ -126,7 +127,7 @@ func (h *Hearth) GetNextTask() *Task {
 		// Skip tasks that have children (parent/epic tasks - work on leaves only)
 		hasChildren := false
 		for _, otherTask := range state.Tasks {
-			if otherTask.ParentID != nil && *otherTask.ParentID == id {
+			if otherTask.ParentID != nil && *otherTask.ParentID == task.ID {
 				hasChildren = true
 				break
 			}

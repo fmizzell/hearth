@@ -202,3 +202,77 @@ func TestExecuteTasks_ParentSummary(t *testing.T) {
 	// Should have made exactly 4 calls to Claude
 	assert.Equal(t, 4, callCount, "Should call Claude 4 times: parent, child1, child2, parent summary")
 }
+
+// TestExecuteTasks_ContextInjection tests that child tasks receive parent chain and sibling context
+func TestExecuteTasks_ContextInjection(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	assert.NoError(t, err)
+
+	// Create root task
+	err = h.Process(&hearth.TaskCreated{
+		TaskID:      "T-root",
+		Title:       "Root task",
+		Description: "The ultimate goal",
+		Time:        time.Now(),
+	})
+	assert.NoError(t, err)
+
+	rootID := "T-root"
+
+	callCount := 0
+	mockClaudeCaller := func(prompt, workDir string) (string, error) {
+		callCount++
+
+		// First call: root creates two children
+		if callCount == 1 {
+			h2, _ := hearth.NewHearthWithPersistence(workDir)
+			h2.Process(&hearth.TaskCreated{
+				TaskID:   "T-child-1",
+				Title:    "First child",
+				ParentID: &rootID,
+				Time:     time.Now(),
+			})
+			h2.Process(&hearth.TaskCreated{
+				TaskID:   "T-child-2",
+				Title:    "Second child",
+				ParentID: &rootID,
+				Time:     time.Now(),
+			})
+			return "Created two children", nil
+		}
+
+		// Second call: child 1 executes - should see parent chain but NO siblings yet
+		if callCount == 2 {
+			assert.Contains(t, prompt, "ROOT TASK:", "Should show root task")
+			assert.Contains(t, prompt, "The ultimate goal", "Should show root description")
+			assert.NotContains(t, prompt, "PREVIOUS SIBLING", "First child has no previous siblings")
+			return "Child 1 result", nil
+		}
+
+		// Third call: child 2 executes - should see parent chain AND child 1's result
+		if callCount == 3 {
+			assert.Contains(t, prompt, "ROOT TASK:", "Should show root task")
+			assert.Contains(t, prompt, "The ultimate goal", "Should show root description")
+			assert.Contains(t, prompt, "PREVIOUS SIBLING RESULTS:", "Should show sibling section")
+			assert.Contains(t, prompt, "T-child-1", "Should reference child 1")
+			assert.Contains(t, prompt, "First child", "Should show child 1 title")
+			assert.Contains(t, prompt, ".hearth/results/T-child-1.md", "Should point to child 1 result file")
+			return "Child 2 result", nil
+		}
+
+		// Fourth call: parent summary
+		if callCount == 4 {
+			return "Summary of both children", nil
+		}
+
+		return "Unexpected call", nil
+	}
+
+	// Execute all tasks
+	err = executeTasks(h, tmpDir, mockClaudeCaller, nil)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 4, callCount)
+}

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fmizzell/hearth"
@@ -175,6 +176,9 @@ func executeTasks(h *hearth.Hearth, workspaceDir string, claudeCaller ClaudeCall
 			prompt = task.Title // Fallback to title if no description
 		}
 
+		// Build context: parent chain + sibling results
+		contextInfo := buildTaskContext(h, task, workspaceDir)
+
 		// Build full prompt with task context and instructions
 		taskContext := fmt.Sprintf(`
 CURRENT TASK: %s
@@ -185,7 +189,7 @@ If this task involves multiple steps or can be parallelized, you MUST create sub
 
 `, task.Title, task.ID)
 
-		fullPrompt := taskContext + prompt + "\n" + prompts.TaskSystemInstructions
+		fullPrompt := contextInfo + taskContext + prompt + "\n" + prompts.TaskSystemInstructions
 
 		// Call Claude with the task description as the prompt
 		response, err := claudeCaller(fullPrompt, workspaceDir)
@@ -247,6 +251,80 @@ If this task involves multiple steps or can be parallelized, you MUST create sub
 	}
 
 	return nil
+}
+
+// buildTaskContext builds context for a task including parent chain and sibling results
+func buildTaskContext(h *hearth.Hearth, task *hearth.Task, workspaceDir string) string {
+	var context strings.Builder
+
+	// Build parent chain to root
+	parentChain := buildParentChain(h, task)
+	if len(parentChain) > 0 {
+		// Root task is at the end of the chain
+		root := parentChain[len(parentChain)-1]
+		context.WriteString(fmt.Sprintf("ROOT TASK: %s\n", root.Title))
+		if root.Description != "" {
+			context.WriteString(fmt.Sprintf("ROOT GOAL: %s\n", root.Description))
+		}
+		context.WriteString("\n")
+
+		// Show parent hierarchy if there are intermediate parents
+		if len(parentChain) > 1 {
+			context.WriteString("PARENT CHAIN:\n")
+			// Walk from root down to immediate parent
+			for i := len(parentChain) - 1; i >= 0; i-- {
+				parent := parentChain[i]
+				indent := strings.Repeat("  ", len(parentChain)-1-i)
+				context.WriteString(fmt.Sprintf("%s└─ %s \"%s\"\n", indent, parent.ID, parent.Title))
+			}
+			context.WriteString("\n")
+		}
+	}
+
+	// Find and list completed sibling results
+	if task.ParentID != nil {
+		siblings := h.GetChildTasks(*task.ParentID)
+		var completedSiblings []*hearth.Task
+
+		// Get siblings that completed before this task (by creation time)
+		for _, sibling := range siblings {
+			if sibling.ID != task.ID && sibling.Status == "completed" {
+				completedSiblings = append(completedSiblings, sibling)
+			}
+		}
+
+		if len(completedSiblings) > 0 {
+			context.WriteString("PREVIOUS SIBLING RESULTS:\n")
+			context.WriteString("Your siblings have already completed work. You can reference their findings:\n\n")
+			for _, sibling := range completedSiblings {
+				resultPath := fmt.Sprintf(".hearth/results/%s.md", sibling.ID)
+				context.WriteString(fmt.Sprintf("- %s \"%s\" → Result: %s\n", sibling.ID, sibling.Title, resultPath))
+			}
+			context.WriteString("\nYou can read these files to avoid duplicating work and build on their findings.\n\n")
+		}
+	}
+
+	if context.Len() > 0 {
+		return context.String() + "---\n\n"
+	}
+	return ""
+}
+
+// buildParentChain walks up the task hierarchy and returns chain from immediate parent to root
+func buildParentChain(h *hearth.Hearth, task *hearth.Task) []*hearth.Task {
+	var chain []*hearth.Task
+
+	current := task
+	for current.ParentID != nil {
+		parent := h.GetTask(*current.ParentID)
+		if parent == nil {
+			break
+		}
+		chain = append(chain, parent)
+		current = parent
+	}
+
+	return chain
 }
 
 // checkAndGenerateParentSummary checks if a task's parent should now generate a summary
