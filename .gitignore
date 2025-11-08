@@ -16,6 +16,7 @@ coverage-temp.out
 # Runtime data
 .hearth/
 code-quality/
+.meta/
 
 # IDE
 .idea/

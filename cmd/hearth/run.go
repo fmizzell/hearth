@@ -18,14 +18,14 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run task loop - executes tasks by sending their description to Claude",
 	Long:  `Run task loop. Gets next task and sends its description as the prompt to Claude. Uses current directory or --workspace flag.`,
-	Run:   runAnalysis,
+	Run:   run,
 }
 
 func init() {
 	runCmd.Flags().StringVar(&taskPreset, "preset", "", "Initialize with a preset task: hello, code-quality")
 }
 
-func runAnalysis(cmd *cobra.Command, args []string) {
+func run(cmd *cobra.Command, args []string) {
 	// Get workspace directory (--workspace flag or current directory)
 	workspaceDir, err := getWorkspaceDir()
 	if err != nil {
@@ -42,13 +42,11 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 	fmt.Println()
 
 	// Create hearth instance with persistence
-	h, err := hearth.NewHearthWithPersistence(workspaceDir)
+	// Services (workspace dir + Claude caller) are automatically registered
+	h, err := hearth.NewHearth(workspaceDir)
 	if err != nil {
 		fatal("Failed to create hearth: %v", err)
 	}
-
-	// Register services for orchestration (workspace dir + Claude caller)
-	h.RegisterServices(workspaceDir, &hearth.DefaultClaudeCaller{})
 
 	// If a preset is specified, create task
 	if taskPreset != "" {
@@ -68,7 +66,7 @@ func runAnalysis(cmd *cobra.Command, args []string) {
 		// Generate unique task ID
 		taskID := fmt.Sprintf("T-%d", time.Now().Unix())
 
-		err = createTask(workspaceDir, taskID, title, description, nil, nil)
+		err = createTask(workspaceDir, taskID, title, description, nil)
 		if err != nil {
 			fatal("Failed to create preset task: %v", err)
 		}

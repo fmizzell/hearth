@@ -33,7 +33,6 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(listCmd)
-	rootCmd.AddCommand(completeCmd)
 }
 
 func getWorkspaceDir() (string, error) {

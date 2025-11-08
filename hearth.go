@@ -3,7 +3,6 @@ package hearth
 import (
 	"errors"
 	"sort"
-	"time"
 
 	"github.com/cumulusrpg/atmos"
 )
@@ -15,25 +14,21 @@ type Hearth struct {
 	engine *atmos.Engine
 }
 
-// HearthState holds all tasks
-type HearthState struct {
-	Tasks map[string]*Task
-}
+// NewHearth creates a new Hearth instance
+// If workspaceDir is empty, creates in-memory instance (for testing)
+// Otherwise, sets up file persistence and registers orchestration services
+func NewHearth(workspaceDir string) (*Hearth, error) {
+	var opts []atmos.EngineOption
 
-// Task represents a task in the system
-type Task struct {
-	ID          string
-	Title       string
-	Description string
-	ParentID    *string
-	DependsOn   *string
-	Status      string
-	CreatedAt   time.Time
-	CompletedAt *time.Time
-}
+	// Set up persistence if workspace provided
+	if workspaceDir != "" {
+		repo, err := NewFileRepository(workspaceDir)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, atmos.WithRepository(repo))
+	}
 
-// NewHearth creates a new Hearth instance with optional atmos options
-func NewHearth(opts ...atmos.EngineOption) *Hearth {
 	engine := atmos.NewEngine(opts...)
 
 	// Register initial state
@@ -53,11 +48,55 @@ func NewHearth(opts ...atmos.EngineOption) *Hearth {
 		Updates("hearth", reduceTaskCompleted)
 
 	// Setup event-driven orchestration
-	setupOrchestration(engine)
+	// Reducers
+	engine.When("next_task_selected").Updates("hearth", reduceNextTaskSelected)
+	engine.When("task_executed").Updates("hearth", reduceTaskExecuted)
 
-	return &Hearth{
+	// Before hooks (where work happens)
+	engine.When("next_task_selected").
+		Before(atmos.NewTypedListener(TypedListenerFunc[*NextTaskSelected](beforeNextTaskSelected)))
+	engine.When("task_executed").
+		Before(atmos.NewTypedListener(TypedListenerFunc[*TaskExecuted](beforeTaskExecuted)))
+	engine.When("summary_generated").
+		Before(atmos.NewTypedListener(TypedListenerFunc[*SummaryGenerated](beforeSummaryGenerated)))
+
+	// Listeners (event chaining)
+	engine.When("execute_tasks_requested").
+		Then(atmos.NewTypedListener(TypedListenerFunc[*ExecuteTasksRequested](onExecuteTasksRequested)))
+	engine.When("next_task_selected").
+		Then(atmos.NewTypedListener(TypedListenerFunc[*NextTaskSelected](onNextTaskSelected)))
+	engine.When("task_executed").
+		Then(atmos.NewTypedListener(TypedListenerFunc[*TaskExecuted](onTaskExecuted)))
+
+	// Parent auto-completion (always runs - replaces reducer mutation)
+	engine.When("task_completed").
+		Then(atmos.NewTypedListener(TypedListenerFunc[*TaskCompleted](onTaskCompletedParent))).
+		Then(atmos.NewTypedListener(TypedListenerFunc[*TaskCompleted](onTaskCompletedSchedule)))
+
+	// Summary generation chain
+	engine.When("summary_requested").
+		Then(atmos.NewTypedListener(TypedListenerFunc[*SummaryRequested](onSummaryRequested)))
+	engine.When("summary_generated").
+		Then(atmos.NewTypedListener(TypedListenerFunc[*SummaryGenerated](onSummaryGenerated)))
+
+	// Register event factories for persistence
+	engine.When("execute_tasks_requested", func() atmos.Event { return &ExecuteTasksRequested{} })
+	engine.When("next_task_selected", func() atmos.Event { return &NextTaskSelected{} })
+	engine.When("task_executed", func() atmos.Event { return &TaskExecuted{} })
+	engine.When("summary_requested", func() atmos.Event { return &SummaryRequested{} })
+	engine.When("summary_generated", func() atmos.Event { return &SummaryGenerated{} })
+
+	h := &Hearth{
 		engine: engine,
 	}
+
+	// Register services for orchestration if workspace provided
+	if workspaceDir != "" {
+		engine.RegisterService("workspace_dir", workspaceDir)
+		engine.RegisterService("claude_caller", &DefaultClaudeCaller{})
+	}
+
+	return h, nil
 }
 
 // Process is the single method to consume and process events
@@ -119,12 +158,6 @@ func (h *Hearth) GetNextTask() *Task {
 	return findNextTask(tasks)
 }
 
-// RegisterServices registers services needed for orchestration (workspace dir, Claude caller)
-func (h *Hearth) RegisterServices(workspaceDir string, claudeCaller ClaudeCaller) {
-	h.engine.RegisterService("workspace_dir", workspaceDir)
-	h.engine.RegisterService("claude_caller", claudeCaller)
-}
-
 // Engine exposes the underlying Atmos engine for advanced use cases
 func (h *Hearth) Engine() *atmos.Engine {
 	return h.engine
@@ -181,14 +214,6 @@ func findNextInSubtree(parent *Task, taskMap map[string]*Task) *Task {
 		// No children - this is a leaf
 		if parent.Status != "todo" {
 			return nil
-		}
-
-		// Check dependencies
-		if parent.DependsOn != nil {
-			dep := taskMap[*parent.DependsOn]
-			if dep == nil || dep.Status != "completed" {
-				return nil
-			}
 		}
 
 		return parent

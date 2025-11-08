@@ -11,13 +11,12 @@ var (
 	addTitle       string
 	addDescription string
 	addParent      string
-	addDependsOn   string
 )
 
 var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new task",
-	Long:  `Add a new task to the current workspace with optional parent/dependency relationships.`,
+	Long:  `Add a new task to the current workspace with optional parent for hierarchical tasks.`,
 	Run:   addTask,
 }
 
@@ -25,7 +24,6 @@ func init() {
 	addCmd.Flags().StringVarP(&addTitle, "title", "t", "", "Task title (required)")
 	addCmd.Flags().StringVarP(&addDescription, "description", "d", "", "Task description")
 	addCmd.Flags().StringVarP(&addParent, "parent", "p", "", "Parent task ID (for hierarchical tasks)")
-	addCmd.Flags().StringVarP(&addDependsOn, "depends-on", "D", "", "Task ID this task depends on")
 	if err := addCmd.MarkFlagRequired("title"); err != nil {
 		panic(fmt.Sprintf("Failed to mark title flag as required: %v", err))
 	}
@@ -40,17 +38,14 @@ func addTask(cmd *cobra.Command, args []string) {
 	// Generate task ID
 	taskID := generateTaskID()
 
-	// Prepare optional parent/depends-on pointers
-	var parentPtr, dependsOnPtr *string
+	// Prepare optional parent pointer
+	var parentPtr *string
 	if addParent != "" {
 		parentPtr = &addParent
 	}
-	if addDependsOn != "" {
-		dependsOnPtr = &addDependsOn
-	}
 
 	// Create task using helper (loads, creates, saves)
-	err = createTask(workspaceDir, taskID, addTitle, addDescription, parentPtr, dependsOnPtr)
+	err = createTask(workspaceDir, taskID, addTitle, addDescription, parentPtr)
 	if err != nil {
 		fatal("%v", err)
 	}
@@ -63,9 +58,6 @@ func addTask(cmd *cobra.Command, args []string) {
 	}
 	if addParent != "" {
 		fmt.Printf("  Parent: %s\n", addParent)
-	}
-	if addDependsOn != "" {
-		fmt.Printf("  Depends on: %s\n", addDependsOn)
 	}
 }
 

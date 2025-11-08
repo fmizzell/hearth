@@ -37,7 +37,6 @@ func reduceTaskCreated(engine *atmos.Engine, state interface{}, event atmos.Even
 		Title:       e.Title,
 		Description: e.Description,
 		ParentID:    e.ParentID,
-		DependsOn:   e.DependsOn,
 		Status:      "todo",
 		CreatedAt:   e.Time,
 	}
@@ -71,5 +70,29 @@ func reduceTaskCompleted(engine *atmos.Engine, state interface{}, event atmos.Ev
 		// which emits TaskCompleted events for parents instead of mutating state
 	}
 
+	return s
+}
+
+// ============================================================================
+// ORCHESTRATION REDUCERS - Build state from orchestration events
+// ============================================================================
+
+func reduceNextTaskSelected(engine *atmos.Engine, state interface{}, event atmos.Event) interface{} {
+	s := state.(HearthState)
+	e := event.(*NextTaskSelected)
+
+	if e.TaskID != "" {
+		// Task was selected, mark as in-progress
+		if task, exists := s.Tasks[e.TaskID]; exists {
+			task.Status = "in-progress"
+		}
+	}
+
+	return s
+}
+
+func reduceTaskExecuted(engine *atmos.Engine, state interface{}, event atmos.Event) interface{} {
+	s := state.(HearthState)
+	// TaskExecuted event is recorded in log (result path available for context building)
 	return s
 }

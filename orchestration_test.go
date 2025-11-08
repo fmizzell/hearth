@@ -124,9 +124,6 @@ func ReduceOrcTaskCompleted(engine *atmos.Engine, state interface{}, event atmos
 // BEFORE HOOKS
 // ============================================================================
 
-// Mock Claude caller for testing
-var mockClaudeResponses = make(map[string]string)
-
 func BeforeNextTaskSelected(engine *atmos.Engine, event *NextTaskSelected) {
 	state := engine.GetState("orchestration").(*OrchestrationState)
 
@@ -153,12 +150,6 @@ func BeforeTaskExecuted(engine *atmos.Engine, event *TaskExecuted) {
 	// TODO: gather context
 	// TODO: build prompt
 	// TODO: call Claude
-
-	// Mock Claude call
-	response := mockClaudeResponses[event.TaskID]
-	if response == "" {
-		response = "Task completed successfully"
-	}
 
 	// Mock storing result
 	resultPath := fmt.Sprintf(".hearth/results/%s.md", event.TaskID)

@@ -14,8 +14,12 @@ func TestEventPersistence(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Step 1: Create hearth, add some tasks, save events
-	h1, err := NewHearthWithPersistence(tmpDir)
+	h1, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+
+	// Use mock caller to avoid real Claude API calls
+	mockCaller := &MockClaudeCaller{}
+	h1.Engine().RegisterService("claude_caller", mockCaller)
 
 	err = h1.Process(&TaskCreated{
 		TaskID:      "T1",
@@ -51,8 +55,9 @@ func TestEventPersistence(t *testing.T) {
 	assert.FileExists(t, eventsFile)
 
 	// Step 2: Load new hearth instance from same directory
-	h2, err := NewHearthWithPersistence(tmpDir)
+	h2, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+	h2.Engine().RegisterService("claude_caller", mockCaller)
 
 	// Step 3: Verify state matches (events were replayed)
 	tasks := h2.GetTasks()
@@ -83,8 +88,9 @@ func TestEventPersistence(t *testing.T) {
 	// Events auto-persist via FileRepository
 
 	// Load h3
-	h3, err := NewHearthWithPersistence(tmpDir)
+	h3, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+	h3.Engine().RegisterService("claude_caller", mockCaller)
 
 	tasks = h3.GetTasks()
 	assert.Equal(t, 3, len(tasks))
@@ -99,8 +105,9 @@ func TestEventPersistence_EmptyWorkspace(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Load hearth from empty workspace
-	h, err := NewHearthWithPersistence(tmpDir)
+	h, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+	h.Engine().RegisterService("claude_caller", &MockClaudeCaller{})
 
 	// Should have no tasks
 	tasks := h.GetTasks()
@@ -122,10 +129,12 @@ func TestEventPersistence_EmptyWorkspace(t *testing.T) {
 // TestEventPersistence_EventMerging tests that concurrent instances merge events correctly
 func TestEventPersistence_EventMerging(t *testing.T) {
 	tmpDir := t.TempDir()
+	mockCaller := &MockClaudeCaller{}
 
 	// Instance 1: Create and save task T1
-	h1, err := NewHearthWithPersistence(tmpDir)
+	h1, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+	h1.Engine().RegisterService("claude_caller", mockCaller)
 
 	err = h1.Process(&TaskCreated{
 		TaskID:      "T1",
@@ -138,8 +147,9 @@ func TestEventPersistence_EventMerging(t *testing.T) {
 	// Events auto-persist via FileRepository
 
 	// Instance 2: Load existing, add T2, save
-	h2, err := NewHearthWithPersistence(tmpDir)
+	h2, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+	h2.Engine().RegisterService("claude_caller", mockCaller)
 
 	err = h2.Process(&TaskCreated{
 		TaskID:      "T2",
@@ -152,8 +162,9 @@ func TestEventPersistence_EventMerging(t *testing.T) {
 	// Events auto-persist via FileRepository
 
 	// Instance 3: Load and verify both tasks are present
-	h3, err := NewHearthWithPersistence(tmpDir)
+	h3, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+	h3.Engine().RegisterService("claude_caller", mockCaller)
 
 	tasks := h3.GetTasks()
 	assert.Equal(t, 2, len(tasks))
@@ -172,8 +183,12 @@ func TestEventPersistence_ComplexHierarchy(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create a complex hierarchy with multiple levels
-	h1, err := NewHearthWithPersistence(tmpDir)
+	h1, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+
+	// Use mock caller to avoid real Claude API calls
+	mockCaller := &MockClaudeCaller{}
+	h1.Engine().RegisterService("claude_caller", mockCaller)
 
 	// Create root task
 	err = h1.Process(&TaskCreated{
@@ -230,8 +245,9 @@ func TestEventPersistence_ComplexHierarchy(t *testing.T) {
 	// Events auto-persist via FileRepository
 
 	// Load new instance and verify all relationships preserved
-	h2, err := NewHearthWithPersistence(tmpDir)
+	h2, err := NewHearth(tmpDir)
 	assert.NoError(t, err)
+	h2.Engine().RegisterService("claude_caller", mockCaller)
 
 	// Verify hierarchy
 	root := h2.GetTask("ROOT")
@@ -255,70 +271,4 @@ func TestEventPersistence_ComplexHierarchy(t *testing.T) {
 	assert.Equal(t, "completed", grandchild1.Status)
 	assert.NotNil(t, grandchild1.ParentID)
 	assert.Equal(t, "CHILD1", *grandchild1.ParentID)
-}
-
-// TestEventPersistence_Dependencies tests that task dependencies persist correctly
-func TestEventPersistence_Dependencies(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	h1, err := NewHearthWithPersistence(tmpDir)
-	assert.NoError(t, err)
-
-	// Create tasks with dependencies
-	err = h1.Process(&TaskCreated{
-		TaskID:      "T1",
-		Title:       "Setup",
-		Description: "Initial setup",
-		Time:        time.Now(),
-	})
-	assert.NoError(t, err)
-
-	err = h1.Process(&TaskCreated{
-		TaskID:      "T2",
-		Title:       "Implementation",
-		Description: "Implement feature",
-		DependsOn:   strPtr("T1"),
-		Time:        time.Now(),
-	})
-	assert.NoError(t, err)
-
-	err = h1.Process(&TaskCreated{
-		TaskID:      "T3",
-		Title:       "Testing",
-		Description: "Test feature",
-		DependsOn:   strPtr("T2"),
-		Time:        time.Now(),
-	})
-	assert.NoError(t, err)
-
-	// Complete T1
-	err = h1.Process(&TaskCompleted{
-		TaskID: "T1",
-		Time:   time.Now(),
-	})
-	assert.NoError(t, err)
-
-	// Events auto-persist via FileRepository
-
-	// Load and verify dependencies preserved
-	h2, err := NewHearthWithPersistence(tmpDir)
-	assert.NoError(t, err)
-
-	t1 := h2.GetTask("T1")
-	assert.Equal(t, "completed", t1.Status)
-
-	t2 := h2.GetTask("T2")
-	assert.NotNil(t, t2.DependsOn)
-	assert.Equal(t, "T1", *t2.DependsOn)
-	assert.Equal(t, "todo", t2.Status)
-
-	t3 := h2.GetTask("T3")
-	assert.NotNil(t, t3.DependsOn)
-	assert.Equal(t, "T2", *t3.DependsOn)
-	assert.Equal(t, "todo", t3.Status)
-
-	// GetNextTask should return T2 (T1 is complete, T3 depends on T2)
-	next := h2.GetNextTask()
-	assert.NotNil(t, next)
-	assert.Equal(t, "T2", next.ID)
 }

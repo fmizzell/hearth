@@ -39,9 +39,14 @@ func (c *DefaultClaudeCaller) Call(prompt, workDir string) (string, error) {
 
 // ExecuteTask handles task execution: builds context, calls Claude, stores result
 // This is the business logic extracted from cmd/hearth/run.go for reuse in orchestration
-func ExecuteTask(h *Hearth, task *Task, workspaceDir string, claudeCaller ClaudeCaller) (string, error) {
+func ExecuteTask(taskID string, tasks map[string]*Task, workspaceDir string, claudeCaller ClaudeCaller) (string, error) {
+	task := tasks[taskID]
+	if task == nil {
+		return "", fmt.Errorf("task not found: %s", taskID)
+	}
+
 	// Build context: parent chain + sibling results
-	contextInfo := BuildTaskContext(h, task, workspaceDir)
+	contextInfo := BuildTaskContext(taskID, tasks, workspaceDir)
 
 	// Build full prompt with task context and instructions
 	taskContext := fmt.Sprintf(`
@@ -76,11 +81,16 @@ If this task involves multiple steps or can be parallelized, you MUST create sub
 }
 
 // BuildTaskContext builds context for a task including parent chain and sibling results
-func BuildTaskContext(h *Hearth, task *Task, workspaceDir string) string {
+func BuildTaskContext(taskID string, tasks map[string]*Task, workspaceDir string) string {
+	task := tasks[taskID]
+	if task == nil {
+		return ""
+	}
+
 	var context strings.Builder
 
 	// Build parent chain to root
-	parentChain := buildParentChain(h, task)
+	parentChain := buildParentChain(task, tasks)
 	if len(parentChain) > 0 {
 		// Root task is at the end of the chain
 		root := parentChain[len(parentChain)-1]
@@ -105,13 +115,14 @@ func BuildTaskContext(h *Hearth, task *Task, workspaceDir string) string {
 
 	// Find and list completed sibling results
 	if task.ParentID != nil {
-		siblings := h.GetChildTasks(*task.ParentID)
 		var completedSiblings []*Task
 
 		// Get siblings that completed before this task (by creation time)
-		for _, sibling := range siblings {
-			if sibling.ID != task.ID && sibling.Status == "completed" {
-				completedSiblings = append(completedSiblings, sibling)
+		for _, t := range tasks {
+			if t.ParentID != nil && *t.ParentID == *task.ParentID {
+				if t.ID != task.ID && t.Status == "completed" {
+					completedSiblings = append(completedSiblings, t)
+				}
 			}
 		}
 
@@ -133,12 +144,12 @@ func BuildTaskContext(h *Hearth, task *Task, workspaceDir string) string {
 }
 
 // buildParentChain walks up the task hierarchy and returns chain from immediate parent to root
-func buildParentChain(h *Hearth, task *Task) []*Task {
+func buildParentChain(task *Task, tasks map[string]*Task) []*Task {
 	var chain []*Task
 
 	current := task
 	for current.ParentID != nil {
-		parent := h.GetTask(*current.ParentID)
+		parent := tasks[*current.ParentID]
 		if parent == nil {
 			break
 		}
