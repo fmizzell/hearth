@@ -52,6 +52,9 @@ func NewHearth(opts ...atmos.EngineOption) *Hearth {
 		Requires(atmos.Valid(&TaskCompletionValidator{})).
 		Updates("hearth", reduceTaskCompleted)
 
+	// Setup event-driven orchestration
+	setupOrchestration(engine)
+
 	return &Hearth{
 		engine: engine,
 	}
@@ -114,6 +117,17 @@ func (h *Hearth) GetNextTask() *Task {
 	}
 
 	return findNextTask(tasks)
+}
+
+// RegisterServices registers services needed for orchestration (workspace dir, Claude caller)
+func (h *Hearth) RegisterServices(workspaceDir string, claudeCaller ClaudeCaller) {
+	h.engine.RegisterService("workspace_dir", workspaceDir)
+	h.engine.RegisterService("claude_caller", claudeCaller)
+}
+
+// Engine exposes the underlying Atmos engine for advanced use cases
+func (h *Hearth) Engine() *atmos.Engine {
+	return h.engine
 }
 
 // findNextTask implements depth-first task selection
