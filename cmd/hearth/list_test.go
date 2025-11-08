@@ -44,7 +44,7 @@ func TestListWithStatusFilter_Todo(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with some tasks
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	h, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	// Add tasks with different statuses
@@ -112,7 +112,7 @@ func TestListWithStatusFilter_Pending(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with some tasks
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	h, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	// Add tasks
@@ -164,7 +164,7 @@ func TestListWithStatusFilter_InProgress(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with some tasks
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	h, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	// Add tasks with different statuses
@@ -217,7 +217,7 @@ func TestListWithStatusFilter_Completed(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with some tasks
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	h, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	// Add tasks
@@ -285,7 +285,7 @@ func TestListEmptyWorkspace(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with NO tasks
-	_, err := hearth.NewHearthWithPersistence(tmpDir)
+	_, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	// Events auto-persist via FileRepository
@@ -315,7 +315,7 @@ func TestListWithStatusFilter_NoMatches(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with only todo tasks
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	h, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	err = h.Process(&hearth.TaskCreated{
@@ -352,7 +352,7 @@ func TestListWithStatusFilter_HierarchicalTasks(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with hierarchical tasks
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	h, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	// Create parent task
@@ -419,7 +419,7 @@ func TestListWithoutStatusFilter(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with tasks of different statuses
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	h, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	err = h.Process(&hearth.TaskCreated{
@@ -497,7 +497,7 @@ func TestListBasicIntegration(t *testing.T) {
 	defer cleanup()
 
 	// Create hearth with a comprehensive set of tasks
-	h, err := hearth.NewHearthWithPersistence(tmpDir)
+	h, err := hearth.NewHearth(tmpDir)
 	assert.NoError(t, err)
 
 	// Create a todo task
@@ -524,13 +524,11 @@ func TestListBasicIntegration(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Create a task with dependency
-	dependsOn := "T2"
+	// Create a simple task
 	err = h.Process(&hearth.TaskCreated{
 		TaskID:      "T3",
 		Title:       "Seed test data",
 		Description: "Add sample users to database",
-		DependsOn:   &dependsOn,
 		Time:        time.Now(),
 	})
 	assert.NoError(t, err)

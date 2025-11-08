@@ -31,7 +31,7 @@ func listTasks(cmd *cobra.Command, args []string) {
 	}
 
 	// Load hearth with persistence
-	h, err := hearth.NewHearthWithPersistence(workspaceDir)
+	h, err := hearth.NewHearth(workspaceDir)
 	if err != nil {
 		fatal("Failed to load hearth: %v", err)
 	}

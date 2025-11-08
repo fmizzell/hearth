@@ -8,9 +8,9 @@ import (
 )
 
 // createTask creates a task and saves it to disk
-func createTask(workspaceDir, taskID, title, description string, parentID, dependsOn *string) error {
+func createTask(workspaceDir, taskID, title, description string, parentID *string) error {
 	// Load hearth with persistence
-	h, err := hearth.NewHearthWithPersistence(workspaceDir)
+	h, err := hearth.NewHearth(workspaceDir)
 	if err != nil {
 		return fmt.Errorf("failed to load hearth: %w", err)
 	}
@@ -21,7 +21,6 @@ func createTask(workspaceDir, taskID, title, description string, parentID, depen
 		Title:       title,
 		Description: description,
 		ParentID:    parentID,
-		DependsOn:   dependsOn,
 		Time:        time.Now(),
 	}
 

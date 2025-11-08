@@ -1,8 +1,6 @@
 package hearth
 
 import (
-	"time"
-
 	"github.com/cumulusrpg/atmos"
 )
 
@@ -39,7 +37,6 @@ func reduceTaskCreated(engine *atmos.Engine, state interface{}, event atmos.Even
 		Title:       e.Title,
 		Description: e.Description,
 		ParentID:    e.ParentID,
-		DependsOn:   e.DependsOn,
 		Status:      "todo",
 		CreatedAt:   e.Time,
 	}
@@ -69,38 +66,33 @@ func reduceTaskCompleted(engine *atmos.Engine, state interface{}, event atmos.Ev
 		completedAt := e.Time
 		task.CompletedAt = &completedAt
 
-		// Check if this task has a parent, and if so, check if all siblings are done
-		if task.ParentID != nil {
-			autoCompleteParent(s, *task.ParentID, e.Time)
+		// NOTE: Parent completion is now handled by onTaskCompletedOrchestration listener
+		// which emits TaskCompleted events for parents instead of mutating state
+	}
+
+	return s
+}
+
+// ============================================================================
+// ORCHESTRATION REDUCERS - Build state from orchestration events
+// ============================================================================
+
+func reduceNextTaskSelected(engine *atmos.Engine, state interface{}, event atmos.Event) interface{} {
+	s := state.(HearthState)
+	e := event.(*NextTaskSelected)
+
+	if e.TaskID != "" {
+		// Task was selected, mark as in-progress
+		if task, exists := s.Tasks[e.TaskID]; exists {
+			task.Status = "in-progress"
 		}
 	}
 
 	return s
 }
 
-// autoCompleteParent recursively completes parent tasks when all children are done
-func autoCompleteParent(state HearthState, parentID string, completedTime time.Time) {
-	// Check if all children of this parent are completed
-	allChildrenDone := true
-	for _, task := range state.Tasks {
-		if task.ParentID != nil && *task.ParentID == parentID {
-			if task.Status != "completed" {
-				allChildrenDone = false
-				break
-			}
-		}
-	}
-
-	// If all children done, complete the parent
-	if allChildrenDone {
-		if parent, exists := state.Tasks[parentID]; exists && parent.Status != "completed" {
-			parent.Status = "completed"
-			parent.CompletedAt = &completedTime
-
-			// Recursively check the parent's parent
-			if parent.ParentID != nil {
-				autoCompleteParent(state, *parent.ParentID, completedTime)
-			}
-		}
-	}
+func reduceTaskExecuted(engine *atmos.Engine, state interface{}, event atmos.Event) interface{} {
+	s := state.(HearthState)
+	// TaskExecuted event is recorded in log (result path available for context building)
+	return s
 }
